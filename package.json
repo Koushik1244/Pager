@@ -19,7 +19,8 @@
     "next-cloudinary": "^6.17.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-icons": "^5.5.0"
+    "react-icons": "^5.5.0",
+      "typescript": "^5"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
@@ -33,7 +34,6 @@
     "hardhat": "^2.22.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.4",
-    "typescript": "^5"
   },
   "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
   "main": "index.js",
