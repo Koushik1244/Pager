@@ -7,8 +7,7 @@ Think:
 > “Is that rockstar actually performing at this venue right now?”  
 > “Is the vadapav guy still at the same corner in Vapi?”
 
-Remote users post a **bounty + question + location**; locals nearby respond with **text + photos/videos + GPS proof** and get paid in **USDC on Monad testnet** when the bounty creator accepts their answer.[web:131][web:137]  
-
+Remote users post a **bounty + question + location**; locals nearby respond with **text + photos/videos + GPS proof** and get paid in **USDC on Monad testnet** when the bounty creator accepts their answer.
 ---
 
 ## ✨ Features
