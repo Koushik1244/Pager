@@ -10,7 +10,7 @@ export default function Home() {
 
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Pager</h1>
+          <h1 className="text-3xl text-red-500 font-bold">Pager</h1>
           <Link
             href="/map"
             className="bg-black text-white px-4 py-2 rounded-lg"

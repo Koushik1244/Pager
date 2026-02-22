@@ -1,6 +1,8 @@
 
 import { UserProvider } from "@/context/UserContext";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { ThemeProvider } from "@/context/ThemeContext";
+import "./globals.css";
 
 export default function RootLayout({
   children,
@@ -10,7 +12,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <UserProvider>{children}</UserProvider>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
