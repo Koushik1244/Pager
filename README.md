@@ -1,6 +1,6 @@
-# Pager – Location‑Based Bounty & Verification DApp
+# Pager – Location‑Based Query & Verification DApp
 
-Pager is a **location‑based bounty network** where anyone can post a crypto reward to verify real‑world events, and local users earn by providing on‑the‑ground proof.
+Pager is a **location‑based bounty network** where anyone can post a crypto reward to verify real‑world events & queries in form of bounties, and local users earn by providing on the ground proof.
 
 Think:  
 > “I heard a building collapsed in NYC, is it true? Show me.”  
@@ -67,7 +67,7 @@ npm install
 # or
 yarn install
 
-create a file named .env.local
+# create a file named .env.local
 
 MONGODB_URI=
 
@@ -78,7 +78,7 @@ CLOUDINARY_API_SECRET=
 NEXT_PUBLIC_MAPBOX_TOKEN=
 NEXT_PUBLIC_MONAD_RPC=https://testnet-rpc.monad.xyz
 
-create a file named .env
+# create a file named .env
 
 MONAD_RPC=https://testnet-rpc.monad.xyz
 PRIVATE_KEY=
