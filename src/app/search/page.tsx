@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { IoMdArrowRoundForward, IoMdCloseCircle } from "react-icons/io";
+import { FaSearch } from "react-icons/fa";
+import { ImSearch } from "react-icons/im";
 
 export default function SearchPage() {
     const [query, setQuery] = useState("");
@@ -57,8 +60,8 @@ export default function SearchPage() {
                     transition
                     "
                 >
-                    <span className="material-symbols-outlined text-primary">
-                        search
+                    <span className="text-primary">
+                        <FaSearch size={20} />
                     </span>
 
                     <input
@@ -79,7 +82,7 @@ export default function SearchPage() {
                             className="text-textMutedDark hover:text-primary"
                         >
                             <span className="material-symbols-outlined">
-                                close
+                                <IoMdCloseCircle size={20} />
                             </span>
                         </button>
                     )}
@@ -137,8 +140,8 @@ export default function SearchPage() {
 
                             <div className="text-primary flex items-center gap-1 text-sm font-semibold">
                                 View
-                                <span className="material-symbols-outlined text-sm">
-                                    arrow_forward_ios
+                                <span className="text-sm">
+                                    <IoMdArrowRoundForward size={20} />
                                 </span>
                             </div>
                         </div>

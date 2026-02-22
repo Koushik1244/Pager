@@ -22,7 +22,7 @@ export default function NotificationModal({ open, onClose }: Props) {
                         onClick={onClose}
                         className="text-gray-400 hover:text-primary p-1"
                     >
-                        <span className="material-symbols-outlined text-base">close</span>
+                        <span className="text-base">close</span>
                     </button>
                 </div>
 

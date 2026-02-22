@@ -5,6 +5,10 @@
 import { formatTimeAgo } from "@/lib/utils";
 import MediaViewer from "./MediaViewer";
 import { useUser } from "@/context/UserContext";
+import { AiFillLike } from "react-icons/ai";
+import { HiChatBubbleLeft, HiChatBubbleOvalLeft } from "react-icons/hi2";
+import { MdChatBubble } from "react-icons/md";
+import { FaShare } from "react-icons/fa";
 
 type Props = {
     bounty: any;
@@ -83,15 +87,15 @@ export default function BountyCard({ bounty, onAccept }: Props) {
             <div className="px-4 py-3 border-t border-primary/10 flex items-center justify-between">
                 <div className="flex items-center gap-6 text-textMutedDark">
                     <button className="flex items-center gap-1 hover:text-red-400 active:scale-90 transition">
-                        <span className="material-symbols-outlined text-[20px]">
-                            favorite
+                        <span className="text-[20px]">
+                            <AiFillLike size={24} />
                         </span>
                         <span className="text-xs font-semibold">0</span>
                     </button>
 
                     <button className="flex items-center gap-1 hover:text-primary transition">
-                        <span className="material-symbols-outlined text-[20px]">
-                            chat_bubble
+                        <span className="text-[20px]">
+                            <HiChatBubbleLeft size={24} />
                         </span>
                         <span className="text-xs font-semibold">0</span>
                     </button>
@@ -105,8 +109,8 @@ export default function BountyCard({ bounty, onAccept }: Props) {
                         }}
                         className="flex items-center gap-1 hover:text-green-400 transition"
                     >
-                        <span className="material-symbols-outlined text-[20px]">
-                            share
+                        <span className="text-[20px]">
+                            <FaShare size={24} />
                         </span>
                     </button>
                 </div>

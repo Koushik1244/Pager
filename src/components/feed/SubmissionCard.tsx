@@ -1,3 +1,5 @@
+// src\components\feed\SubmissionCard.tsx
+
 "use client";
 
 import { useState } from "react";
@@ -7,6 +9,9 @@ import axios from "axios";
 import { ethers } from "ethers";
 import { ESCROW_ADDRESS, ESCROW_ABI } from "@/lib/contracts";
 import { formatTimeAgo } from "@/lib/utils";
+import { FaShare } from "react-icons/fa";
+import { HiChatBubbleLeft } from "react-icons/hi2";
+import { AiFillLike } from "react-icons/ai";
 
 type Props = {
     submission: any;
@@ -132,30 +137,31 @@ shadow-md
                 {/* Actions */}
                 <div className="px-3 py-2 border-t border-primary/10 flex items-center justify-between">
                     <div className="flex items-center gap-5 text-textMutedDark">
-                        <button className="flex items-center gap-1 hover:text-red-400 transition">
-                            <span className="material-symbols-outlined text-[18px]">
-                                favorite
+                        <button className="flex items-center gap-1 hover:text-red-400 active:scale-90 transition">
+                            <span className="text-[20px]">
+                                <AiFillLike size={24} />
                             </span>
-                            <span className="text-[10px]">0</span>
+                            <span className="text-xs font-semibold">0</span>
                         </button>
 
                         <button className="flex items-center gap-1 hover:text-primary transition">
-                            <span className="material-symbols-outlined text-[18px]">
-                                chat_bubble
+                            <span className="text-[20px]">
+                                <HiChatBubbleLeft size={24} />
                             </span>
-                            <span className="text-[10px]">0</span>
+                            <span className="text-xs font-semibold">0</span>
                         </button>
 
                         <button
-                            onClick={() =>
+                            onClick={() => {
                                 navigator.clipboard.writeText(
-                                    `${window.location.origin}/submission/${submission._id}`
-                                )
-                            }
-                            className="hover:text-green-400"
+                                    `${window.location.origin}/bounty/${bounty._id}`
+                                );
+                                alert("Link copied");
+                            }}
+                            className="flex items-center gap-1 hover:text-green-400 transition"
                         >
-                            <span className="material-symbols-outlined text-[18px]">
-                                share
+                            <span className="text-[20px]">
+                                <FaShare size={24} />
                             </span>
                         </button>
                     </div>

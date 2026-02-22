@@ -219,7 +219,9 @@ export default function ConnectWallet({
                             }
                             className="group"
                         >
-                            <div className="size-10 rounded-full bg-gradient-to-br from-primary/30 via-primary/40 to-primary/60 border-2 border-primary/40 shadow-sm group-hover:scale-105 transition-all duration-300" />
+                            <div className="size-10 rounded-full border-2 border-primary/40 shadow-sm group-hover:scale-105 transition-all duration-300" ><img
+                                src={`https://i.pravatar.cc/150?u=${user.username}`}
+                                className="w-96 rounded-full border-2 border-primary shadow-glow object-cover" /></div>
                         </button>
 
                         {isAvatarMenuOpen && (

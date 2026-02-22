@@ -19,7 +19,7 @@ export default function FloatingActionButton({ onClick }: Props) {
       backdrop-blur-xl
       "
         >
-            <span className="material-symbols-outlined text-4xl mb-2">+</span>
+            <span className="text-4xl mb-2">+</span>
         </button>
     );
 }

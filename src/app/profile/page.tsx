@@ -5,6 +5,8 @@ import axios from "axios";
 import { useUser } from "@/context/UserContext";
 import Link from "next/link";
 import MediaViewer from "@/components/feed/MediaViewer";
+import { FaBolt, FaEdit } from "react-icons/fa";
+import { MdAssignment, MdOutlineAssignmentTurnedIn } from "react-icons/md";
 
 export default function ProfilePage() {
     const { user } = useUser();
@@ -90,7 +92,7 @@ export default function ProfilePage() {
                             className="w-24 h-24 rounded-full border-2 border-primary shadow-glow object-cover"
                         />
                         <div className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-1">
-                            <span className="material-symbols-outlined text-sm">
+                            <span className="text-sm">
                                 verified
                             </span>
                         </div>
@@ -111,8 +113,8 @@ export default function ProfilePage() {
 
                 {/* Edit Button (UI only for now) */}
                 <button className="bg-primary/20 hover:bg-primary/30 text-primary px-5 py-2 rounded-xl font-semibold transition flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm">
-                        edit
+                    <span className="text-sm">
+                        <FaEdit size={18} />
                     </span>
                     Edit Profile
                 </button>
@@ -131,8 +133,8 @@ export default function ProfilePage() {
                         </p>
                     </div>
 
-                    <span className="material-symbols-outlined text-primary text-3xl">
-                        assignment
+                    <span className="text-primary text-3xl">
+                        <MdOutlineAssignmentTurnedIn size={46} />
                     </span>
                 </div>
 
@@ -146,8 +148,8 @@ export default function ProfilePage() {
                         </p>
                     </div>
 
-                    <span className="material-symbols-outlined text-primary text-3xl">
-                        bolt
+                    <span className="text-primary text-3xl">
+                        <FaBolt size={40} />
                     </span>
                 </div>
 
