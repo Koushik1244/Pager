@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pager – Location‑Based Bounty & Verification DApp
 
-## Getting Started
+Pager is a **location‑based bounty network** where anyone can post a crypto reward to verify real‑world events, and local users earn by providing on‑the‑ground proof.
 
-First, run the development server:
+Think:  
+> “I heard a building collapsed in NYC, is it true? Show me.”  
+> “Is that rockstar actually performing at this venue right now?”  
+> “Is the vadapav guy still at the same corner in Vapi?”
+
+Remote users post a **bounty + question + location**; locals nearby respond with **text + photos/videos + GPS proof** and get paid in **USDC on Monad testnet** when the bounty creator accepts their answer.[web:131][web:137]  
+
+---
+
+## ✨ Features
+
+- **Location‑based bounties**
+  - Create bounties pinned to a specific GPS location.
+  - Set reward amount (e.g., 5 USDC), deadline, and requirements (photo, video, text report).
+- **Local verifiers (“bounty hunters”)**
+  - See bounties near you on a feed/map.
+  - Walk to the spot, capture evidence, and submit a claim.
+- **On‑chain escrow**
+  - Bounty rewards locked in a smart contract.
+  - Funds released only when the bounty creator accepts a submission.
+- **Proof with GPS + media**
+  - Submissions include GPS location, timestamp, and attached images/videos.
+  - Designed to fight fake/AI‑generated claims by tying them to physical presence concepts similar to existing location‑based verification systems.[web:137]
+- **Social feed experience**
+  - Bounties and completed reports look like posts in a social app.
+  - Cards with author, location, time, media, reactions (likes/comments placeholders).
+- **Wallet‑based identity**
+  - Connect wallet via MetaMask (Monad testnet).
+  - Optional on‑chain username (e.g., `satoshi_pager`).
+- **Theming & UX**
+  - Global **MenuBar** with animated nav, active underlines, wallet pill, and avatar.
+  - **Light/dark mode** toggle (via Tailwind `darkMode: "class"`).
+  - Glassmorphism onboarding modal for username selection.
+
+---
+
+## 🧱 Tech Stack
+
+- **Frontend**
+  - Next.js (App Router, TypeScript, React)
+  - Tailwind CSS with custom theme (Plus Jakarta Sans, primary colors, rounded UI)
+  - Material Symbols icons
+- **Blockchain / Web3**
+  - Monad **testnet**
+  - USDC test token (ERC‑20) used for rewards
+  - `ethers.js` for wallet & contract interactions
+- **Backend / API**
+  - Next.js API routes for:
+    - `POST /api/user/connect` – link wallet & create user
+    - `POST /api/user/set-username` – set username
+- **State / Context**
+  - Custom `UserContext` for storing user profile and wallet info
+
+## 📦 Getting Started (Local Development)
 
 ```bash
-npm run dev
+# 1. Clone the repo
+git clone https://github.com/Koushik1244/Pager.git
+cd pager-dapp
+
+# 2. Install dependencies
+npm install
 # or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+yarn install
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+create a file named .env.local
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+MONGODB_URI=
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 
-## Learn More
+NEXT_PUBLIC_MAPBOX_TOKEN=
+NEXT_PUBLIC_MONAD_RPC=https://testnet-rpc.monad.xyz
 
-To learn more about Next.js, take a look at the following resources:
+create a file named .env
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+MONAD_RPC=https://testnet-rpc.monad.xyz
+PRIVATE_KEY=
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
