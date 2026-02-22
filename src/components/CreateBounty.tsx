@@ -1,3 +1,5 @@
+// src\components\CreateBounty.tsx
+
 "use client";
 
 import { useState } from "react";
@@ -8,7 +10,7 @@ import { ESCROW_ADDRESS, USDC_ADDRESS, ESCROW_ABI, ERC20_ABI } from "@/lib/contr
 
 export default function CreateBounty() {
     const { user } = useUser();
-
+    const [open, setOpen] = useState(false);
     const [description, setDescription] = useState("");
     const [reward, setReward] = useState("");
     const [lat, setLat] = useState("");
@@ -123,6 +125,7 @@ export default function CreateBounty() {
     };
 
     return (
+
         <div className="max-w-xl mx-auto mt-8 bg-white shadow-md rounded-2xl p-6 border">
             <h2 className="text-xl font-semibold mb-4">Create a Bounty</h2>
 

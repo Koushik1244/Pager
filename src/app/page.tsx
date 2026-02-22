@@ -1,27 +1,31 @@
-import ConnectWallet from "@/components/ConnectWallet";
-import CreateBounty from "@/components/CreateBounty";
+// src\app\page.tsx
+
+"use client";
+
+import { useState } from "react";
 import BountyFeed from "@/components/BountyFeed";
 import Link from "next/link";
+import BountyModal from "@/components/BountyModal";
+import FloatingActionButton from "@/components/FloatingActionButton";
+import { FiMapPin } from "react-icons/fi";
 
 export default function Home() {
+  const [open, setOpen] = useState(false);
+
   return (
-    <main className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-xl mx-auto">
+    <main className="min-h-screen bg-backgroundLight dark:bg-backgroundDark transition-colors duration-300">
+
+      <div className="max-w-2xl mx-auto px-4 py-6">
 
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl text-red-500 font-bold">Pager</h1>
-          <Link
-            href="/map"
-            className="bg-black text-white px-4 py-2 rounded-lg"
-          >
-            Map View
-          </Link>
-        </div>
 
-        <ConnectWallet />
-        <CreateBounty />
+
+
+        <FloatingActionButton onClick={() => setOpen(true)} />
+        <BountyModal open={open} onClose={() => setOpen(false)} />
+
         <BountyFeed />
+
       </div>
     </main>
   );

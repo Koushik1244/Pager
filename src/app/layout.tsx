@@ -1,7 +1,8 @@
+// src\app\layout.tsx
 
 import { UserProvider } from "@/context/UserContext";
+import MenuBar from "@/components/MenuBar";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { ThemeProvider } from "@/context/ThemeContext";
 import "./globals.css";
 
 export default function RootLayout({
@@ -10,13 +11,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>
-        <ThemeProvider>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const theme = localStorage.getItem('theme');
+                  if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
+
+      <body className="min-h-screen bg-backgroundLight dark:bg-backgroundDark text-textMainLight dark:text-textMainDark font-display transition-colors duration-300">
+        <UserProvider>
+          <MenuBar />
           {children}
-        </ThemeProvider>
+        </UserProvider>
       </body>
     </html>
   );
 }
-
