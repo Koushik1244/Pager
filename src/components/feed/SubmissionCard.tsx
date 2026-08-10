@@ -24,9 +24,47 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
 
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [rejectLoading, setRejectLoading] = useState(false);
 
     const isCreator = user?.username === bounty.username;
     const isPending = submission.status === "pending";
+
+    const ensureMonadTestnet = async () => {
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const network = await provider.getNetwork();
+
+        if (network.chainId !== 10143n) {
+            try {
+                await (window as any).ethereum.request({
+                    method: "wallet_switchEthereumChain",
+                    params: [{ chainId: "0x279f" }],
+                });
+            } catch (switchError: any) {
+                if (switchError.code === 4902) {
+                    await (window as any).ethereum.request({
+                        method: "wallet_addEthereumChain",
+                        params: [
+                            {
+                                chainId: "0x279f",
+                                chainName: "Monad Testnet",
+                                rpcUrls: ["https://testnet-rpc.monad.xyz"],
+                                nativeCurrency: {
+                                    name: "MON",
+                                    symbol: "MON",
+                                    decimals: 18,
+                                },
+                                blockExplorerUrls: ["https://explorer.monad.xyz"],
+                            },
+                        ],
+                    });
+                } else {
+                    throw switchError;
+                }
+            }
+        }
+
+        return provider;
+    };
 
     // 🔐 On-chain approval + DB update
     const approve = async () => {
@@ -38,7 +76,7 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
                 return;
             }
 
-            const provider = new ethers.BrowserProvider((window as any).ethereum);
+            const provider = await ensureMonadTestnet();
             const signer = await provider.getSigner();
 
             const escrow = new ethers.Contract(
@@ -71,6 +109,43 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
             alert("Approval failed");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const reject = async () => {
+        try {
+            setRejectLoading(true);
+
+            if (!(window as any).ethereum) {
+                alert("MetaMask not found");
+                return;
+            }
+
+            const provider = await ensureMonadTestnet();
+            const signer = await provider.getSigner();
+
+            const escrow = new ethers.Contract(
+                ESCROW_ADDRESS,
+                ESCROW_ABI,
+                signer
+            );
+
+            const tx = await escrow.reject(bounty.onChainId, submission.hunterWallet);
+
+            await tx.wait();
+
+            await axios.post("/api/submission/reject", {
+                submissionId: submission._id,
+            });
+
+            onApproved?.();
+
+            alert("Submission rejected successfully!");
+        } catch (err) {
+            console.error(err);
+            alert("Rejection failed");
+        } finally {
+            setRejectLoading(false);
         }
     };
 
@@ -168,16 +243,30 @@ shadow-md
 
                     {/* Creator Approve */}
                     {isCreator && isPending && bounty.status !== "completed" && (
-                        <button
-                            onClick={() => setConfirmOpen(true)}
-                            className="
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={reject}
+                                disabled={rejectLoading}
+                                className="
                                 bg-primary text-white text-[10px]
                                 px-3 py-1 rounded-md
                                 hover:bg-primary/80 transition
                             "
-                        >
-                            Approve
-                        </button>
+                            >
+                                {rejectLoading ? "Processing..." : "Reject"}
+                            </button>
+
+                            <button
+                                onClick={() => setConfirmOpen(true)}
+                                className="
+                                bg-primary text-white text-[10px]
+                                px-3 py-1 rounded-md
+                                hover:bg-primary/80 transition
+                            "
+                            >
+                                Approve
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>

@@ -142,7 +142,7 @@ export default function BountyModal({ open, onClose }: Props) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto p-4 sm:items-center">
             {/* Overlay */}
             <div
                 onClick={onClose}
@@ -158,7 +158,7 @@ export default function BountyModal({ open, onClose }: Props) {
             {/* Modal */}
             <div
                 className={`
-          relative w-[92%] max-w-lg
+          relative my-auto w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto
           rounded-2xl p-6
 
           /* Glass surface */
@@ -185,13 +185,14 @@ export default function BountyModal({ open, onClose }: Props) {
         `}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-4 flex items-center justify-between border-b border-primary/10 bg-white/90 px-6 py-4 backdrop-blur-md dark:bg-cardDark/95">
                     <h2 className="text-lg font-bold text-textMainLight dark:text-textMainDark">
                         Create Bounty
                     </h2>
 
                     <button
                         onClick={onClose}
+                        aria-label="Close create bounty dialog"
                         className="text-gray-400 hover:text-primary transition"
                     >
                         <span className="material-symbols-outlined">close</span>

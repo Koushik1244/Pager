@@ -1,6 +1,7 @@
     "use client";
 
     import { useState, useEffect } from "react";
+    import { useRouter } from "next/navigation";
     import { ethers } from "ethers";
     import axios from "axios";
     import { useUser } from "@/context/UserContext";
@@ -13,6 +14,8 @@
         showUserName?: boolean;
         showLogoutButton?: boolean;
         showAvatarDropdown?: boolean;
+        onboardingRedirect?: string;
+        buttonClassName?: string;
     };
 
     export default function ConnectWallet({
@@ -20,8 +23,11 @@
         showUserName = true,
         showLogoutButton = true,
         showAvatarDropdown = false,
+        onboardingRedirect,
+        buttonClassName,
     }: ConnectWalletProps) {
         const { user, setUser } = useUser();
+        const router = useRouter();
 
         const [username, setUsername] = useState("");
         const [loading, setLoading] = useState(false);
@@ -76,6 +82,8 @@
             // Open username modal if not set
             if (!userData.username) {
                 setShowUsernameModal(true);
+            } else if (onboardingRedirect) {
+                router.push(onboardingRedirect);
             }
         };
 
@@ -126,6 +134,7 @@
                 setUser(res.data.user);
                 setShowUsernameModal(false);
                 setUsername("");
+                if (onboardingRedirect) router.push(onboardingRedirect);
             } catch (err) {
                 console.error(err);
                 alert("Failed to save username");
@@ -238,13 +247,13 @@
                 )}
 
                 {/* ----------------- Main ----------------- */}
-                <div className="p-4 flex mt-1">
+                <div className="flex">
                     {/* Connect Button */}
                     {!user && (
                         <button
                             onClick={connectWallet}
                             disabled={loading}
-                            className="bg-black dark:bg-neutralDark text-white px-4 py-2 rounded-full text-sm font-semibold hover:scale-105 transition-all duration-200"
+                            className={buttonClassName || "bg-black dark:bg-neutralDark text-white px-4 py-2 rounded-full text-sm font-semibold hover:scale-105 transition-all duration-200"}
                         >
                             {loading ? "Connecting..." : "Connect Wallet"}
                         </button>

@@ -9,23 +9,23 @@ Order: Core loop → Landing page & UX → AI features → UI polish
 Goal: the money/escrow loop and basic app flow are bulletproof before anything else is built on top.
 
 ### 1.1 Smart contract fixes (contracts/PagerEscrow.sol)
-- [ ] Add `deadline` field to the `Bounty` struct (uint256, unix timestamp)
-- [ ] Add `refundExpired(uint256 bountyId)` — creator can reclaim funds if deadline passed and bounty still active
-- [ ] Add a reject path — creator can mark a bounty inactive without releasing funds
-- [ ] Add events: BountyCreated, BountyApproved, BountyRefunded
-- [ ] Re-deploy contract to Monad testnet (scripts/deploy.js already exists — reuse it)
-- [ ] Update src/lib/contracts.ts with new ESCROW_ADDRESS and updated ESCROW_ABI
+- [x] Add `deadline` field to the `Bounty` struct (uint256, unix timestamp)
+- [x] Add `refundExpired(uint256 bountyId)` — creator can reclaim funds if deadline passed and bounty still active
+- [x] Add a reject path — creator can mark a bounty inactive without releasing funds
+- [x] Add events: BountyCreated, BountyApproved, BountyRefunded
+- [x] Re-deploy contract to Monad testnet (scripts/deploy.js already exists — reuse it)
+- [x] Update src/lib/contracts.ts with new ESCROW_ADDRESS and updated ESCROW_ABI
 
 ### 1.2 API route consistency
-- [ ] Verify frontend always calls on-chain approve before /api/submission/approve (already correct in SubmissionCard.tsx)
+- [x] Verify frontend always calls on-chain approve before /api/submission/approve (already correct in SubmissionCard.tsx)
 - [ ] Add src/app/api/bounty/refund/route.ts — DB-side counterpart when refundExpired() is called on-chain
-- [ ] Add network-check guard to SubmissionCard.tsx's approve() — currently missing the chainId check that CreateBounty.tsx has
-- [ ] Fix /api/submission/approve to bulk-update ALL other pending submissions on the same bountyId to "rejected" when one is approved — currently only the approved submission's status changes, the rest stay "pending" forever (confirmed bug: one bounty can get multiple submissions, only one can ever be paid since reward pool is fixed at creation)
+- [x] Add network-check guard to SubmissionCard.tsx's approve() — currently missing the chainId check that CreateBounty.tsx has
+- [x] Fix /api/submission/approve to bulk-update ALL other pending submissions on the same bountyId to "rejected" when one is approved — currently only the approved submission's status changes, the rest stay "pending" forever (confirmed bug: one bounty can get multiple submissions, only one can ever be paid since reward pool is fixed at creation)
 - [ ] Add "not selected" UI state in SubmissionCard.tsx so hunters who didn't win know their submission was passed over instead of seeing nothing
 
 ### 1.3 Data model additions (do now, cheaper than retrofitting later)
 - [ ] Bounty model: add deadline (Date), expand status enum to open | completed | expired | refunded
-- [ ] Submission model: expand status enum to pending | approved | rejected
+- [x] Submission model: expand status enum to pending | approved | rejected
 
 ### 1.4 Core flow testing checklist
 - [ ] Create bounty end to end on Monad testnet, confirm USDC actually locks

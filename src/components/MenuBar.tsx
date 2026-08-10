@@ -7,7 +7,7 @@ import Image from "next/image";
 import ConnectWallet from "@/components/ConnectWallet";
 
 const navItems = [
-    { href: "/", label: "Home" },
+    { href: "/dashboard", label: "Dashboard" },
     { href: "/search", label: "Search" },
     { href: "/map", label: "Map" },
     { href: "/profile", label: "Profile" },
@@ -23,6 +23,7 @@ export default function MenuBar() {
     const [lastScrollY, setLastScrollY] = useState(0); // ✅ NEW
 
     const isMapPage = pathname === "/map";
+    const isLanding = pathname === "/";
 
     // Theme init
     useEffect(() => {
@@ -88,17 +89,17 @@ export default function MenuBar() {
         bg-white/90 dark:bg-[#1a1530]/95
         backdrop-blur-md
         border-b border-borderLight/50 dark:border-borderDark/50
-        px-6 py-4 lg:px-20
+        px-5 py-3 lg:px-12
       `}
         >
-            <div className="max-w-[1200px] max-h-[50px] mx-auto flex items-center justify-between">
+            <div className="mx-auto flex max-w-6xl items-center justify-between">
                 {/* Logo */}
                 <button
                     type="button"
                     onClick={() => router.push("/")}
                     className="flex items-center hover:scale-105 transition-transform duration-200"
                 >
-                    <div className="relative size-32">
+                    <div className="relative h-9 w-28">
                         <Image
                             src="/pager-logo.svg"
                             alt="Pager logo"
@@ -111,12 +112,10 @@ export default function MenuBar() {
                 </button>
 
                 {/* Nav */}
-                <nav className="hidden md:flex items-center gap-8">
+                <nav className="hidden md:flex items-center gap-7">
+                    {isLanding && <a href="#how-it-works" className="text-sm font-semibold text-gray-500 transition hover:text-primary dark:text-gray-400">How it works</a>}
                     {navItems.map((item) => {
-                        const isActive =
-                            item.href === "/"
-                                ? pathname === "/"
-                                : pathname.startsWith(item.href);
+                        const isActive = pathname.startsWith(item.href);
 
                         return (
                             <Link

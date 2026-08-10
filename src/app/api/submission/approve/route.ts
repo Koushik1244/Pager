@@ -16,6 +16,17 @@ export async function POST(req: NextRequest) {
             status: "approved",
         });
 
+        await Submission.updateMany(
+            {
+                bountyId,
+                status: "pending",
+                _id: { $ne: submissionId },
+            },
+            {
+                status: "rejected",
+            }
+        );
+
         // Mark bounty completed
         await Bounty.findByIdAndUpdate(bountyId, {
             status: "completed",
