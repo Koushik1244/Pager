@@ -12,6 +12,11 @@ contract PagerEscrow {
     IERC20 public usdc;
     address public platform;
 
+    event BountyCreated(uint256 indexed bountyId, address indexed creator, uint256 amount, uint256 deadline);
+    event BountyApproved(uint256 indexed bountyId, address indexed hunter, uint256 amount);
+    event BountyRefunded(uint256 indexed bountyId, address indexed creator, uint256 amount);
+    event SubmissionRejected(uint256 indexed bountyId, address indexed hunter);
+
     uint256 public bountyCount;
 
     struct Bounty {
@@ -46,6 +51,8 @@ contract PagerEscrow {
             active: true,
             deadline: deadline
         });
+
+        emit BountyCreated(bountyCount, msg.sender, amount, deadline);
     }
 
     function approveBounty(uint256 bountyId, address hunter) external {
@@ -61,6 +68,8 @@ contract PagerEscrow {
 
         usdc.transfer(hunter, hunterAmount);
         usdc.transfer(platform, fee);
+
+        emit BountyApproved(bountyId, hunter, bounty.amount);
     }
 
     function refundExpired(uint256 bountyId) external {
@@ -73,5 +82,16 @@ contract PagerEscrow {
         bounty.active = false;
 
         usdc.transfer(bounty.creator, bounty.amount);
+
+        emit BountyRefunded(bountyId, bounty.creator, bounty.amount);
+    }
+
+    function reject(uint256 bountyId, address hunter) external {
+        Bounty storage bounty = bounties[bountyId];
+
+        require(bounty.active, "Inactive");
+        require(bounty.creator == msg.sender, "Not creator");
+
+        emit SubmissionRejected(bountyId, hunter);
     }
 }
