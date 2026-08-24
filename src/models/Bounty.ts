@@ -23,6 +23,11 @@ const BountySchema = new Schema(
             required: true,
         },
 
+        deadline: {
+            type: Date,
+            required: true,
+        },
+
         location: {
             lat: Number,
             lng: Number,
@@ -37,6 +42,7 @@ const BountySchema = new Schema(
         status: {
             type: String,
             default: "open", // open | completed
+            enum: ["open", "completed", "expired", "refunded"],
         },
         onChainId: {
             type: Number,

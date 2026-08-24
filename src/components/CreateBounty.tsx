@@ -34,7 +34,7 @@ export default function CreateBounty() {
 
             const provider = new ethers.BrowserProvider((window as any).ethereum);
 
-            const network = await provider.getNetwork();
+            let network = await provider.getNetwork();
 
             if (network.chainId !== 10143n) {
                 try {
@@ -66,6 +66,12 @@ export default function CreateBounty() {
                         return;
                     }
                 }
+            }
+
+            network = await provider.getNetwork();
+            if (network.chainId !== 10143n) {
+                alert("Please switch to Monad Testnet");
+                return;
             }
 
             const signer = await provider.getSigner();
@@ -102,6 +108,7 @@ export default function CreateBounty() {
                 walletAddress: user.walletAddress,
                 description,
                 reward: amount,
+                deadline,
                 lat: Number(lat),
                 lng: Number(lng),
                 address,

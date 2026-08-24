@@ -25,6 +25,7 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [rejectLoading, setRejectLoading] = useState(false);
+    const [approvalTxHash, setApprovalTxHash] = useState<string | null>(null);
 
     const isCreator = user?.username === bounty.username;
     const isPending = submission.status === "pending";
@@ -63,6 +64,11 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
             }
         }
 
+        const confirmedNetwork = await provider.getNetwork();
+        if (confirmedNetwork.chainId !== 10143n) {
+            throw new Error("Please switch to Monad Testnet");
+        }
+
         return provider;
     };
 
@@ -85,19 +91,26 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
                 signer
             );
 
-            // 1️⃣ Release funds on-chain
+            // Release funds on-chain first so the transaction can be independently verified.
             const tx = await escrow.approveBounty(
                 bounty.onChainId,
                 submission.hunterWallet
             );
+            setApprovalTxHash(tx.hash);
 
             await tx.wait();
 
-            // 2️⃣ Update DB
-            await axios.post("/api/submission/approve", {
-                submissionId: submission._id,
-                bountyId: bounty._id,
-            });
+            try {
+                await axios.post("/api/submission/approve", {
+                    submissionId: submission._id,
+                    bountyId: bounty._id,
+                    walletAddress: user?.walletAddress,
+                });
+            } catch (syncError) {
+                console.error("Approval confirmed on-chain, but database sync failed", syncError);
+                alert(`Funds released on-chain, but Pager could not sync the approval. Transaction: ${tx.hash}`);
+                return;
+            }
 
             setConfirmOpen(false);
             onApproved?.();
@@ -106,7 +119,9 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
 
         } catch (err) {
             console.error(err);
-            alert("Approval failed");
+            alert(approvalTxHash
+                ? `Approval failed after transaction ${approvalTxHash}`
+                : "Approval failed");
         } finally {
             setLoading(false);
         }
@@ -136,6 +151,8 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
 
             await axios.post("/api/submission/reject", {
                 submissionId: submission._id,
+                bountyId: bounty._id,
+                walletAddress: user?.walletAddress,
             });
 
             onApproved?.();
@@ -191,6 +208,11 @@ shadow-md
                             Approved
                         </span>
                     )}
+                    {submission.status === "rejected" && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-500">
+                            Not selected
+                        </span>
+                    )}
                 </div>
 
                 {/* Description */}
@@ -198,6 +220,12 @@ shadow-md
                     <div className="px-3 pb-2">
                         <p className="text-xs">{submission.description}</p>
                     </div>
+                )}
+
+                {submission.status === "rejected" && (
+                    <p className="px-3 pb-2 text-xs text-textMutedDark">
+                        This submission was not selected for the bounty.
+                    </p>
                 )}
 
                 {/* Media */}
@@ -283,6 +311,17 @@ shadow-md
                             {bounty.reward} USDC will be released.
                             Platform fee: 2%
                         </p>
+
+                        {approvalTxHash && (
+                            <a
+                                href={`https://testnet.monadscan.com/tx/${approvalTxHash}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block text-xs text-primary underline"
+                            >
+                                View approval transaction
+                            </a>
+                        )}
 
                         <div className="flex gap-3">
                             <button

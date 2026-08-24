@@ -9,11 +9,17 @@ export async function POST(req: NextRequest) {
     try {
         await connectDB();
 
-        const { walletAddress, description, reward, lat, lng, address, mediaUrl, onChainId } =
+        const { walletAddress, description, reward, lat, lng, address, mediaUrl, onChainId, deadline } =
             await req.json();
 
-        if (!walletAddress || !description || !reward) {
+        if (!walletAddress || !description || !reward || !deadline || !onChainId) {
             return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+        }
+
+        const deadlineDate = new Date(Number(deadline) * 1000);
+
+        if (Number.isNaN(deadlineDate.getTime())) {
+            return NextResponse.json({ error: "Invalid deadline" }, { status: 400 });
         }
 
         const user = await User.findOne({ walletAddress });
@@ -27,6 +33,7 @@ export async function POST(req: NextRequest) {
             username: user.username,
             description,
             reward,
+            deadline: deadlineDate,
             location: { lat, lng, address },
             mediaUrl,
             onChainId,

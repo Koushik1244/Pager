@@ -73,18 +73,23 @@ export default function BountyModal({ open, onClose }: Props) {
             }
 
             const provider = new ethers.BrowserProvider((window as any).ethereum);
-            console.log("[BountyModal] before getSigner", { provider, ethereum: (window as any).ethereum });
-            const signer = await provider.getSigner();
-            console.log("[BountyModal] after getSigner", { signer });
 
             // Ensure Monad
-            const network = await provider.getNetwork();
+            let network = await provider.getNetwork();
             if (network.chainId !== 10143n) {
                 await (window as any).ethereum.request({
                     method: "wallet_switchEthereumChain",
                     params: [{ chainId: "0x279f" }],
                 });
             }
+
+            network = await provider.getNetwork();
+            if (network.chainId !== 10143n) {
+                alert("Please switch to Monad Testnet");
+                return;
+            }
+
+            const signer = await provider.getSigner();
 
             const amountInUnits = ethers.parseUnits(amount.toString(), 6);
             const deadline = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
@@ -115,6 +120,7 @@ export default function BountyModal({ open, onClose }: Props) {
                 walletAddress: user.walletAddress,
                 description,
                 reward: amount,
+                deadline,
                 lat,
                 lng,
                 mediaUrl: imageUrl,
