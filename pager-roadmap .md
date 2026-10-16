@@ -11,28 +11,41 @@ Goal: the money/escrow loop and basic app flow are bulletproof before anything e
 ### 1.1 Smart contract fixes (contracts/PagerEscrow.sol)
 - [x] Add `deadline` field to the `Bounty` struct (uint256, unix timestamp)
 - [x] Add `refundExpired(uint256 bountyId)` — creator can reclaim funds if deadline passed and bounty still active
-- [x] Add a reject path — creator can mark a bounty inactive without releasing funds
-- [x] Add events: BountyCreated, BountyApproved, BountyRefunded
-- [x] Re-deploy contract to Monad testnet (scripts/deploy.js already exists — reuse it)
-- [x] Update src/lib/contracts.ts with new ESCROW_ADDRESS and updated ESCROW_ABI
+- [x] Add a reject path — creator can mark a bounty inactive without releasing funds — DONE: reject() added, does not touch bounty.active, bounty stays open
+- [x] Add events: BountyCreated, BountyApproved, BountyRefunded, SubmissionRejected — all four added and emitted
+- [x] Re-deploy contract to Monad testnet (scripts/deploy.js already exists — reuse it) — deployed at 0x2FA0964EdE9779B93ce111b275e7F492C263FfCe (current, as of this handoff)
+- [x] Update src/lib/contracts.ts with new ESCROW_ADDRESS and updated ESCROW_ABI — done, reject() correctly placed in ESCROW_ABI (not ERC20_ABI — this was a real bug caught and fixed)
+
+PHASE 1.1 IS FULLY COMPLETE.
 
 ### 1.2 API route consistency
-- [x] Verify frontend always calls on-chain approve before /api/submission/approve (already correct in SubmissionCard.tsx)
-- [ ] Add src/app/api/bounty/refund/route.ts — DB-side counterpart when refundExpired() is called on-chain
-- [x] Add network-check guard to SubmissionCard.tsx's approve() — currently missing the chainId check that CreateBounty.tsx has
-- [x] Fix /api/submission/approve to bulk-update ALL other pending submissions on the same bountyId to "rejected" when one is approved — currently only the approved submission's status changes, the rest stay "pending" forever (confirmed bug: one bounty can get multiple submissions, only one can ever be paid since reward pool is fixed at creation)
-- [ ] Add "not selected" UI state in SubmissionCard.tsx so hunters who didn't win know their submission was passed over instead of seeing nothing
+- [ ] Verify frontend always calls on-chain approve before /api/submission/approve (already correct in SubmissionCard.tsx) — confirmed correct, no action needed
+- [x] Add src/app/api/bounty/refund/route.ts — DB-side counterpart when refundExpired() is called on-chain
+- [x] Add network-check guard to SubmissionCard.tsx's approve() — verifies chainId after switching
+- [x] Fix /api/submission/approve to bulk-update ALL other pending submissions on the same bountyId to "rejected" when one is approved — DONE, uses Submission.updateMany()
+- [x] Add "not selected" UI state in SubmissionCard.tsx so hunters who didn't win know their submission was passed over
+- [x] Wallet connect bug — RESOLVED, but differently than originally scoped: root cause was NOT a missing multi-provider picker. Real causes were (a) Phantom extension actively intercepting window.ethereum even when MetaMask showed as connected — fixed by fully disabling Phantom extension, and (b) MetaMask's own active-account selector reverting to an old account after an extension restart — fixed by manually reselecting the correct account in MetaMask. A wallet-picker UI was still added to ConnectWallet.tsx as defensive code but was NOT the actual fix.
+- [x] Added reject button to SubmissionCard.tsx, wired to on-chain reject() + new /api/submission/reject route
 
-### 1.3 Data model additions (do now, cheaper than retrofitting later)
-- [ ] Bounty model: add deadline (Date), expand status enum to open | completed | expired | refunded
+### 1.3 Data model additions
+- [x] Bounty model: add deadline (Date), expand status enum to open | completed | expired | refunded — deadline is now persisted from the creation payload
 - [x] Submission model: expand status enum to pending | approved | rejected
 
 ### 1.4 Core flow testing checklist
-- [ ] Create bounty end to end on Monad testnet, confirm USDC actually locks
-- [ ] Submit proof as a different wallet
-- [ ] Approve and confirm USDC actually arrives in hunter's wallet minus 2% fee
-- [ ] Test reject/expire paths once built
-- [ ] Test wrong-network handling on both create and approve flows
+- [x] Create bounty end to end on Monad testnet, confirm USDC actually locks
+- [x] Submit proof as a different wallet
+- [x] Approve and confirm USDC actually arrives in hunter's wallet minus 2% fee
+- [ ] Test reject/expire paths — reject() UI-tested and confirmed working; refund UI/route now exists but still needs fresh testnet validation
+- [x] Add local PagerEscrow regression coverage for create, approve, reject, and refund paths — `test/PagerEscrow.js` (6 passing)
+- [x] Test wrong-network handling on both create and approve flows
+
+### 1.5 OPEN INVESTIGATION — approve succeeded but hunter wasn't paid
+- [ ] UNRESOLVED as of this handoff: creator clicked Approve, MetaMask popped up, was confirmed — but the hunter's wallet did not receive USDC
+- Next step was to check MetaMask's Activity tab for that specific transaction and determine: did it show CONFIRMED (green) or FAILED/reverted (red)?
+- If FAILED: likely cause is the bounty had already been closed by a prior action (e.g. testing reject() or approve() earlier on the same bountyId, tripping the `require(bounty.active, "Inactive")` check) — check transaction revert reason on MonadScan
+- If CONFIRMED but still no funds: something is wrong in the approveBounty() logic itself or the wrong hunter address was passed — needs direct contract read of that bounty's state on MonadScan
+- THIS WAS NOT YET RESOLVED — pick this up first next session
+- Approval UI now preserves the submitted transaction hash and distinguishes a confirmed on-chain transaction from a failed database sync; the specific transaction still requires its hash for diagnosis.
 
 ---
 
@@ -41,7 +54,7 @@ Goal: the money/escrow loop and basic app flow are bulletproof before anything e
 Goal: someone who has never seen the app can land on it, understand what it is, connect a wallet, and use it without confusion.
 
 ### 2.1 Landing page
-- [ ] Hero section: what Pager is, one clear CTA
+- [~] Hero section: what Pager is, one clear CTA — IN PROGRESS, started this session ("landing page,scroll," commit exists) — status/completeness not yet reviewed, check what was actually built
 - [ ] How it works — 3 step visual (post bounty → local verifies → get paid)
 - [ ] Live/sample bounty preview cards pulled from the real feed
 - [ ] Footer: links, testnet disclaimer (funds are testnet USDC, not real money)

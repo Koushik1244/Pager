@@ -37,6 +37,42 @@
         "IERC20",
         "PagerEscrow"
       ]
+    },
+    "D:\\PROJECTS\\versionsss\\V5\\contracts\\MockERC20.sol": {
+      "lastModificationDate": 1787593304327,
+      "contentHash": "5e79da51a60f0e2bd47219d8d906e5d0",
+      "sourceName": "contracts/MockERC20.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "MockERC20"
+      ]
     }
   }
 }
