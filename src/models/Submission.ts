@@ -39,6 +39,25 @@ const SubmissionSchema = new Schema(
             type: String,
             required: true,
         },
+
+        captureLat: {
+            type: Number,
+            required: true,
+        },
+
+        captureLng: {
+            type: Number,
+            required: true,
+        },
+
+        capturedAt: {
+            type: Date,
+            required: true,
+        },
+
+        approvedTxHash: {
+            type: String,
+        },
     },
     { timestamps: true }
 );

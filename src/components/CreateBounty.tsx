@@ -5,11 +5,14 @@
 import { useState } from "react";
 import axios from "axios";
 import { useUser } from "@/context/UserContext";
-import { ethers } from "ethers";
+import { ethers, type Log, type LogDescription } from "ethers";
 import { ESCROW_ADDRESS, USDC_ADDRESS, ESCROW_ABI, ERC20_ABI } from "@/lib/contracts";
+import { signAction } from "@/lib/signAction";
+import { useToast } from "@/components/ui/Toast";
 
 export default function CreateBounty() {
     const { user } = useUser();
+    const showToast = useToast();
     const [open, setOpen] = useState(false);
     const [description, setDescription] = useState("");
     const [reward, setReward] = useState("");
@@ -20,7 +23,7 @@ export default function CreateBounty() {
 
     const createBounty = async () => {
         if (!user) {
-            alert("Connect wallet first");
+            showToast("Connect your wallet first.", "info");
             return;
         }
 
@@ -28,7 +31,7 @@ export default function CreateBounty() {
             setLoading(true);
 
             if (!(window as any).ethereum) {
-                alert("MetaMask not found");
+                showToast("No browser wallet was found.", "error");
                 return;
             }
 
@@ -62,7 +65,7 @@ export default function CreateBounty() {
                             ],
                         });
                     } else {
-                        alert("Please switch to Monad Testnet");
+                        showToast("Please switch to Monad Testnet.", "error");
                         return;
                     }
                 }
@@ -70,7 +73,7 @@ export default function CreateBounty() {
 
             network = await provider.getNetwork();
             if (network.chainId !== 10143n) {
-                alert("Please switch to Monad Testnet");
+                showToast("Please switch to Monad Testnet.", "error");
                 return;
             }
 
@@ -79,7 +82,7 @@ export default function CreateBounty() {
             const amount = Number(reward);
 
             if (!amount || amount <= 0) {
-                alert("Enter a valid reward amount");
+                showToast("Enter a valid reward amount.", "error");
                 setLoading(false);
                 return;
             }
@@ -95,17 +98,34 @@ export default function CreateBounty() {
             await approveTx.wait();
 
             // Step 2 — Create bounty on-chain
-            const escrow = new ethers.Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
+            const escrow = new ethers.Contract(
+                ESCROW_ADDRESS,
+                [
+                    ...ESCROW_ABI,
+                    "event BountyCreated(uint256 indexed bountyId, address indexed creator, uint256 amount, uint256 deadline)",
+                ],
+                signer
+            );
 
             const tx = await escrow.createBounty(amountInUnits, deadline);
-            await tx.wait();
+            const receipt = await tx.wait();
+            const bountyCreatedEvent = receipt?.logs
+                .filter((log: Log) => log.address.toLowerCase() === ESCROW_ADDRESS.toLowerCase())
+                .map((log: Log) => escrow.interface.parseLog(log))
+                .find((event: LogDescription | null) => event?.name === "BountyCreated");
 
-            // Step 3 — Get latest on-chain ID
-            const bountyCount = await escrow.bountyCount();
+            if (!bountyCreatedEvent) {
+                showToast(`Bounty transaction confirmed, but its BountyCreated event was not found. Transaction: ${tx.hash}. The bounty was not saved to the database.`, "error");
+                return;
+            }
 
-            // Step 4 — Save in MongoDB
+            const onChainId = Number(bountyCreatedEvent.args.bountyId);
+
+            const auth = await signAction("bounty/create", onChainId);
+
+            // Save in MongoDB
             await axios.post("/api/bounty/create", {
-                walletAddress: user.walletAddress,
+                ...auth,
                 description,
                 reward: amount,
                 deadline,
@@ -113,10 +133,10 @@ export default function CreateBounty() {
                 lng: Number(lng),
                 address,
                 mediaUrl: "",
-                onChainId: Number(bountyCount),
+                onChainId,
             });
 
-            alert("Bounty created & funds locked!");
+            showToast("Bounty created and funds locked.", "success");
 
             setDescription("");
             setReward("");
@@ -126,7 +146,7 @@ export default function CreateBounty() {
 
         } catch (err) {
             console.error(err);
-            alert("Transaction failed");
+            showToast("Transaction failed.", "error");
         } finally {
             setLoading(false);
         }

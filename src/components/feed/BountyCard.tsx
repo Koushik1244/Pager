@@ -12,6 +12,10 @@ import { MdChatBubble } from "react-icons/md";
 import axios from "axios";
 import { ethers } from "ethers";
 import { ESCROW_ABI, ESCROW_ADDRESS } from "@/lib/contracts";
+import { signAction } from "@/lib/signAction";
+import Link from "next/link";
+import { FaShareAlt } from "react-icons/fa";
+import { useToast } from "@/components/ui/Toast";
 
 type Props = {
     bounty: any;
@@ -20,6 +24,7 @@ type Props = {
 
 export default function BountyCard({ bounty, onAccept }: Props) {
     const { user } = useUser();
+    const showToast = useToast();
 
     const isCreator = user?.username === bounty.username;
     const isCompleted = bounty.status === "completed";
@@ -28,6 +33,27 @@ export default function BountyCard({ bounty, onAccept }: Props) {
     const isAcceptDisabled = Boolean(isExpired) || bounty.status !== "open";
     const [refundLoading, setRefundLoading] = useState(false);
 
+    const shareBounty = async () => {
+        const url = `${window.location.origin}/bounty/${bounty._id}`;
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: `Pager bounty: ${bounty.reward} USDC`,
+                    text: bounty.description,
+                    url,
+                });
+            } else {
+                await navigator.clipboard.writeText(url);
+                showToast("Bounty link copied.", "success");
+            }
+        } catch (error) {
+            if (!(error instanceof DOMException && error.name === "AbortError")) {
+                console.error(error);
+                showToast("Could not share the bounty link.", "error");
+            }
+        }
+    };
+
     const refund = async () => {
         if (!user?.walletAddress || !bounty.onChainId) return;
 
@@ -35,7 +61,7 @@ export default function BountyCard({ bounty, onAccept }: Props) {
             setRefundLoading(true);
 
             if (!(window as any).ethereum) {
-                alert("MetaMask not found");
+                showToast("No browser wallet was found.", "error");
                 return;
             }
 
@@ -59,16 +85,19 @@ export default function BountyCard({ bounty, onAccept }: Props) {
             const tx = await escrow.refundExpired(bounty.onChainId);
             await tx.wait();
 
+            const auth = await signAction("bounty/refund", bounty._id);
+
             await axios.post("/api/bounty/refund", {
                 bountyId: bounty._id,
-                walletAddress: user.walletAddress,
+                ...auth,
+                txHash: tx.hash,
             });
 
-            alert("Bounty refunded successfully!");
+            showToast("Bounty refunded successfully.", "success");
             window.location.reload();
         } catch (error) {
             console.error(error);
-            alert("Refund failed");
+            showToast("Refund failed.", "error");
         } finally {
             setRefundLoading(false);
         }
@@ -155,6 +184,15 @@ export default function BountyCard({ bounty, onAccept }: Props) {
 
                 </div>
 
+                <div className="flex items-center gap-4">
+                    <Link href={`/bounty/${bounty._id}`} className="text-xs font-semibold text-primary hover:underline">
+                        View
+                    </Link>
+                    <button onClick={shareBounty} className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                        <FaShareAlt aria-hidden="true" />
+                        Share
+                    </button>
+
                 {/* Right Action */}
                 {isCreator && isExpired && !isCompleted && !isRefunded && bounty.status === "open" && (
                     <button
@@ -191,6 +229,7 @@ export default function BountyCard({ bounty, onAccept }: Props) {
                         Refunded
                     </span>
                 )}
+                </div>
             </div>
         </article>
     );

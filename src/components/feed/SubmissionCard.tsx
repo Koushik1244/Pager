@@ -9,6 +9,8 @@ import axios from "axios";
 import { ethers } from "ethers";
 import { ESCROW_ADDRESS, ESCROW_ABI } from "@/lib/contracts";
 import { formatTimeAgo } from "@/lib/utils";
+import { signAction } from "@/lib/signAction";
+import { useToast } from "@/components/ui/Toast";
 import { HiChatBubbleLeft } from "react-icons/hi2";
 import { AiFillLike } from "react-icons/ai";
 
@@ -20,9 +22,12 @@ type Props = {
 
 export default function SubmissionCard({ submission, bounty, onApproved }: Props) {
     const { user } = useUser();
+    const showToast = useToast();
 
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [syncLoading, setSyncLoading] = useState(false);
+    const [syncError, setSyncError] = useState<string | null>(null);
     const [rejectLoading, setRejectLoading] = useState(false);
     const [approvalTxHash, setApprovalTxHash] = useState<string | null>(null);
 
@@ -71,13 +76,45 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
         return provider;
     };
 
-    // 🔐 On-chain approval + DB update
+    const syncApproval = async (txHash: string) => {
+        setSyncLoading(true);
+        setSyncError(null);
+
+        try {
+            const auth = await signAction("submission/approve", submission._id);
+            await axios.post("/api/submission/approve", {
+                submissionId: submission._id,
+                bountyId: bounty._id,
+                ...auth,
+                txHash,
+            });
+
+            setConfirmOpen(false);
+            onApproved?.();
+            showToast("Funds released successfully.", "success");
+        } catch (error) {
+            console.error("Approval confirmed on-chain, but database sync failed", error);
+            const apiMessage = axios.isAxiosError(error)
+                ? error.response?.data?.error
+                : null;
+            setSyncError(
+                typeof apiMessage === "string"
+                    ? `Pager could not sync the approval: ${apiMessage}`
+                    : "Funds were released on-chain, but Pager could not sync the approval. Retry the database sync."
+            );
+        } finally {
+            setSyncLoading(false);
+        }
+    };
+
+    // 🔐 On-chain approval, followed by a retryable database sync
     const approve = async () => {
         try {
             setLoading(true);
+            setSyncError(null);
 
             if (!(window as any).ethereum) {
-                alert("MetaMask not found");
+                showToast("No browser wallet was found.", "error");
                 return;
             }
 
@@ -95,32 +132,20 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
                 bounty.onChainId,
                 submission.hunterWallet
             );
-            setApprovalTxHash(tx.hash);
 
-            await tx.wait();
-
-            try {
-                await axios.post("/api/submission/approve", {
-                    submissionId: submission._id,
-                    bountyId: bounty._id,
-                    walletAddress: user?.walletAddress,
-                });
-            } catch (syncError) {
-                console.error("Approval confirmed on-chain, but database sync failed", syncError);
-                alert(`Funds released on-chain, but Pager could not sync the approval. Transaction: ${tx.hash}`);
-                return;
+            const receipt = await tx.wait();
+            if (!receipt || receipt.status !== 1) {
+                throw new Error("Approval transaction was not confirmed successfully");
             }
 
-            setConfirmOpen(false);
-            onApproved?.();
-
-            alert("Funds released successfully!");
+            setApprovalTxHash(tx.hash);
+            await syncApproval(tx.hash);
 
         } catch (err) {
             console.error(err);
-            alert(approvalTxHash
+            showToast(approvalTxHash
                 ? `Approval failed after transaction ${approvalTxHash}`
-                : "Approval failed");
+                : "Approval failed", "error");
         } finally {
             setLoading(false);
         }
@@ -131,7 +156,7 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
             setRejectLoading(true);
 
             if (!(window as any).ethereum) {
-                alert("MetaMask not found");
+                showToast("No browser wallet was found.", "error");
                 return;
             }
 
@@ -148,18 +173,20 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
 
             await tx.wait();
 
+            const auth = await signAction("submission/reject", submission._id);
+
             await axios.post("/api/submission/reject", {
                 submissionId: submission._id,
                 bountyId: bounty._id,
-                walletAddress: user?.walletAddress,
+                ...auth,
             });
 
             onApproved?.();
 
-            alert("Submission rejected successfully!");
+            showToast("Submission rejected successfully.", "success");
         } catch (err) {
             console.error(err);
-            alert("Rejection failed");
+            showToast("Rejection failed.", "error");
         } finally {
             setRejectLoading(false);
         }
@@ -305,8 +332,14 @@ shadow-md
                                 rel="noreferrer"
                                 className="block text-xs text-primary underline"
                             >
-                                View approval transaction
+                                Transaction: {approvalTxHash}
                             </a>
+                        )}
+
+                        {syncError && (
+                            <p role="alert" className="text-xs text-red-500">
+                                {syncError}
+                            </p>
                         )}
 
                         <div className="flex gap-3">
@@ -317,13 +350,23 @@ shadow-md
                                 Cancel
                             </button>
 
-                            <button
-                                onClick={approve}
-                                disabled={loading}
-                                className="flex-1 py-2 rounded-lg bg-primary text-white shadow-glow"
-                            >
-                                {loading ? "Processing..." : "Confirm"}
-                            </button>
+                            {syncError && approvalTxHash ? (
+                                <button
+                                    onClick={() => syncApproval(approvalTxHash)}
+                                    disabled={syncLoading}
+                                    className="flex-1 py-2 rounded-lg bg-primary text-white shadow-glow disabled:opacity-50"
+                                >
+                                    {syncLoading ? "Syncing..." : "Retry sync"}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={approve}
+                                    disabled={loading || syncLoading}
+                                    className="flex-1 py-2 rounded-lg bg-primary text-white shadow-glow disabled:opacity-50"
+                                >
+                                    {loading ? "Processing..." : "Confirm"}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -7,9 +7,11 @@ import MapPicker from "./ui/MapPicker";
 import ImageUploader from "./ui/ImageUploader";
 import axios from "axios";
 import { useUser } from "@/context/UserContext";
-import { ethers } from "ethers";
+import { ethers, type Log, type LogDescription } from "ethers";
 import { ESCROW_ADDRESS, USDC_ADDRESS, ESCROW_ABI, ERC20_ABI } from "@/lib/contracts";
 import { IoImageSharp } from "react-icons/io5";
+import { signAction } from "@/lib/signAction";
+import { useToast } from "@/components/ui/Toast";
 
 type Props = {
     open: boolean;
@@ -22,6 +24,7 @@ export default function BountyModal({ open, onClose }: Props) {
     const [lng, setLng] = useState<number | null>(null);
     const [imageUrl, setImageUrl] = useState("");
     const { user } = useUser();
+    const showToast = useToast();
     const [description, setDescription] = useState("");
     const [reward, setReward] = useState("");
     const [loading, setLoading] = useState(false);
@@ -48,19 +51,19 @@ export default function BountyModal({ open, onClose }: Props) {
 
     const createBounty = async () => {
         if (!user) {
-            alert("Connect wallet first");
+            showToast("Connect your wallet first.", "info");
             return;
         }
 
         if (!lat || !lng) {
-            alert("Please select a location");
+            showToast("Please select a location.", "error");
             return;
         }
 
         const amount = Number(reward);
 
         if (!amount || amount <= 0) {
-            alert("Enter valid reward");
+            showToast("Enter a valid reward amount.", "error");
             return;
         }
 
@@ -68,7 +71,7 @@ export default function BountyModal({ open, onClose }: Props) {
             setLoading(true);
 
             if (!(window as any).ethereum) {
-                alert("MetaMask not found");
+                showToast("No browser wallet was found.", "error");
                 return;
             }
 
@@ -85,7 +88,7 @@ export default function BountyModal({ open, onClose }: Props) {
 
             network = await provider.getNetwork();
             if (network.chainId !== 10143n) {
-                alert("Please switch to Monad Testnet");
+                showToast("Please switch to Monad Testnet.", "error");
                 return;
             }
 
@@ -109,25 +112,43 @@ export default function BountyModal({ open, onClose }: Props) {
             console.log("[BountyModal] approve confirmed");
 
             // Lock funds
-            const escrow = new ethers.Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
+            const escrow = new ethers.Contract(
+                ESCROW_ADDRESS,
+                [
+                    ...ESCROW_ABI,
+                    "event BountyCreated(uint256 indexed bountyId, address indexed creator, uint256 amount, uint256 deadline)",
+                ],
+                signer
+            );
             const tx = await escrow.createBounty(amountInUnits, deadline);
-            await tx.wait();
+            const receipt = await tx.wait();
+            const bountyCreatedEvent = receipt?.logs
+                .filter((log: Log) => log.address.toLowerCase() === ESCROW_ADDRESS.toLowerCase())
+                .map((log: Log) => escrow.interface.parseLog(log))
+                .find((event: LogDescription | null) => event?.name === "BountyCreated");
 
-            const bountyCount = await escrow.bountyCount();
+            if (!bountyCreatedEvent) {
+                showToast(`Bounty transaction confirmed, but its BountyCreated event was not found. Transaction: ${tx.hash}. The bounty was not saved to the database.`, "error");
+                return;
+            }
+
+            const onChainId = Number(bountyCreatedEvent.args.bountyId);
+
+            const auth = await signAction("bounty/create", onChainId);
 
             // Save in Mongo
             await axios.post("/api/bounty/create", {
-                walletAddress: user.walletAddress,
+                ...auth,
                 description,
                 reward: amount,
                 deadline,
                 lat,
                 lng,
                 mediaUrl: imageUrl,
-                onChainId: Number(bountyCount),
+                onChainId,
             });
 
-            alert("Bounty created!");
+            showToast("Bounty created.", "success");
 
             // Reset
             setDescription("");
@@ -141,7 +162,7 @@ export default function BountyModal({ open, onClose }: Props) {
 
         } catch (err) {
             console.error(err);
-            alert("Transaction failed");
+            showToast("Transaction failed.", "error");
         } finally {
             setLoading(false);
         }
@@ -262,7 +283,7 @@ export default function BountyModal({ open, onClose }: Props) {
                             Choose Image (optional)
                         </p>
 
-                        <ImageUploader onUpload={(url) => setImageUrl(url)} />
+                        <ImageUploader active={open} onUpload={(url) => setImageUrl(url)} />
                     </div>
 
                     {/* </div> */}

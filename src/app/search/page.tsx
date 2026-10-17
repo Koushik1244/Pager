@@ -5,6 +5,7 @@ import axios from "axios";
 import { IoMdCloseCircle } from "react-icons/io";
 import { FaSearch } from "react-icons/fa";
 import { ImSearch } from "react-icons/im";
+import Link from "next/link";
 
 export default function SearchPage() {
     const [query, setQuery] = useState("");
@@ -101,10 +102,12 @@ export default function SearchPage() {
                         </p>
                     )}
 
-                    {users.map((user) => (
-                        <div
-                            key={user._id}
-                            className="
+                    {users.map((user) => {
+                        const profileIdentifier = user.username?.trim() || user.walletAddress;
+                        return (
+                            <div
+                                key={user._id}
+                                className="
                             flex items-center justify-between
                             p-4
                             rounded-xl
@@ -114,31 +117,32 @@ export default function SearchPage() {
                             hover:shadow-lg
                             transition-all
                             "
-                        >
-                            <div className="flex items-center gap-4">
-                                {/* Mock Avatar */}
-                                <img
-                                    src={`https://i.pravatar.cc/60?u=${user.username}`}
-                                    className="w-12 h-12 rounded-full border border-primary/20"
-                                />
+                                >
+                                <div className="flex items-center gap-4">
+                                    {/* Mock Avatar */}
+                                    <img
+                                        src={`https://i.pravatar.cc/60?u=${encodeURIComponent(profileIdentifier)}`}
+                                        className="w-12 h-12 rounded-full border border-primary/20"
+                                    />
 
-                                <div>
-                                    <p className="font-semibold text-textMainLight dark:text-textMainDark">
-                                        @{user.username}
-                                    </p>
+                                    <Link href={`/profile/${encodeURIComponent(profileIdentifier)}`} className="hover:text-primary">
+                                        <p className="font-semibold text-textMainLight dark:text-textMainDark">
+                                            {user.username ? `@${user.username}` : profileIdentifier}
+                                        </p>
 
-                                    <p className="text-xs text-textMutedDark font-mono">
-                                        {user.walletAddress.slice(0, 6)}...
-                                        {user.walletAddress.slice(-4)}
-                                    </p>
+                                        <p className="text-xs text-textMutedDark font-mono">
+                                            {user.walletAddress.slice(0, 6)}...
+                                            {user.walletAddress.slice(-4)}
+                                        </p>
+                                    </Link>
+                                </div>
+
+                                <div className="text-primary text-sm font-semibold">
+                                    User
                                 </div>
                             </div>
-
-                            <div className="text-primary text-sm font-semibold">
-                                User
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </main>

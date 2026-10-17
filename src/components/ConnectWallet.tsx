@@ -5,6 +5,8 @@
     import { ethers } from "ethers";
     import axios from "axios";
     import { useUser } from "@/context/UserContext";
+    import { signAction } from "@/lib/signAction";
+    import { useToast } from "@/components/ui/Toast";
 
     import CreateUsernameModal from "@/components/modals/CreateUsernameModal";
     import NotificationModal from "@/components/modals/NotificationModal";
@@ -26,6 +28,7 @@
         onboardingRedirect,
         buttonClassName,
     }: ConnectWalletProps) {
+        const showToast = useToast();
         const { user, setUser } = useUser();
         const router = useRouter();
 
@@ -92,7 +95,7 @@
                 setLoading(true);
 
                 if (!(window as any).ethereum) {
-                    alert("Install MetaMask");
+                    showToast("Install or connect a browser wallet to continue.", "error");
                     return;
                 }
 
@@ -113,7 +116,7 @@
                 await connectWithProvider(injectedProviders[0]);
             } catch (err) {
                 console.error(err);
-                alert("Wallet connection failed");
+                showToast("Wallet connection failed.", "error");
             } finally {
                 setLoading(false);
             }
@@ -126,8 +129,9 @@
             if (!user || !username.trim()) return;
 
             try {
+                const auth = await signAction("user/set-username", username);
                 const res = await axios.post("/api/user/set-username", {
-                    walletAddress: user.walletAddress,
+                    ...auth,
                     username,
                 });
 
@@ -137,7 +141,7 @@
                 if (onboardingRedirect) router.push(onboardingRedirect);
             } catch (err) {
                 console.error(err);
-                alert("Failed to save username");
+                showToast("Failed to save username.", "error");
             }
         };
 
