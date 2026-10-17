@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useRouter } from "next/navigation";
-import { IoMdArrowRoundForward, IoMdCloseCircle } from "react-icons/io";
+import { IoMdCloseCircle } from "react-icons/io";
 import { FaSearch } from "react-icons/fa";
 import { ImSearch } from "react-icons/im";
 
@@ -11,7 +10,6 @@ export default function SearchPage() {
     const [query, setQuery] = useState("");
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const router = useRouter();
 
     const searchUsers = async (value: string) => {
         if (!value.trim()) {
@@ -106,7 +104,6 @@ export default function SearchPage() {
                     {users.map((user) => (
                         <div
                             key={user._id}
-                            onClick={() => router.push(`/profile/${user.username}`)}
                             className="
                             flex items-center justify-between
                             p-4
@@ -115,7 +112,6 @@ export default function SearchPage() {
                             bg-white dark:bg-cardDark
                             hover:border-primary/40
                             hover:shadow-lg
-                            cursor-pointer
                             transition-all
                             "
                         >
@@ -138,11 +134,8 @@ export default function SearchPage() {
                                 </div>
                             </div>
 
-                            <div className="text-primary flex items-center gap-1 text-sm font-semibold">
-                                View
-                                <span className="text-sm">
-                                    <IoMdArrowRoundForward size={20} />
-                                </span>
+                            <div className="text-primary text-sm font-semibold">
+                                User
                             </div>
                         </div>
                     ))}

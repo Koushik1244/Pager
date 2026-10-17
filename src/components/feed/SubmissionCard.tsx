@@ -9,7 +9,6 @@ import axios from "axios";
 import { ethers } from "ethers";
 import { ESCROW_ADDRESS, ESCROW_ABI } from "@/lib/contracts";
 import { formatTimeAgo } from "@/lib/utils";
-import { FaShare } from "react-icons/fa";
 import { HiChatBubbleLeft } from "react-icons/hi2";
 import { AiFillLike } from "react-icons/ai";
 
@@ -254,19 +253,6 @@ shadow-md
                             <span className="text-xs font-semibold">0</span>
                         </button>
 
-                        <button
-                            onClick={() => {
-                                navigator.clipboard.writeText(
-                                    `${window.location.origin}/bounty/${bounty._id}`
-                                );
-                                alert("Link copied");
-                            }}
-                            className="flex items-center gap-1 hover:text-green-400 transition"
-                        >
-                            <span className="text-[20px]">
-                                <FaShare size={24} />
-                            </span>
-                        </button>
                     </div>
 
                     {/* Creator Approve */}

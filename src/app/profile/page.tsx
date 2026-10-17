@@ -112,11 +112,11 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Edit Button (UI only for now) */}
-                <button className="bg-primary/20 hover:bg-primary/30 text-primary px-5 py-2 rounded-xl font-semibold transition flex items-center gap-2">
+                <button disabled className="bg-primary/20 text-primary/60 px-5 py-2 rounded-xl font-semibold flex items-center gap-2 cursor-not-allowed">
                     <span className="text-sm">
                         <FaEdit size={18} />
                     </span>
-                    Edit Profile
+                    Edit Profile — Coming soon
                 </button>
             </section>
 

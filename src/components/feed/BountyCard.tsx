@@ -9,7 +9,6 @@ import { useUser } from "@/context/UserContext";
 import { AiFillLike } from "react-icons/ai";
 import { HiChatBubbleLeft, HiChatBubbleOvalLeft } from "react-icons/hi2";
 import { MdChatBubble } from "react-icons/md";
-import { FaShare } from "react-icons/fa";
 import axios from "axios";
 import { ethers } from "ethers";
 import { ESCROW_ABI, ESCROW_ADDRESS } from "@/lib/contracts";
@@ -26,6 +25,7 @@ export default function BountyCard({ bounty, onAccept }: Props) {
     const isCompleted = bounty.status === "completed";
     const isRefunded = bounty.status === "refunded";
     const isExpired = bounty.deadline && new Date(bounty.deadline).getTime() < Date.now();
+    const isAcceptDisabled = Boolean(isExpired) || bounty.status !== "open";
     const [refundLoading, setRefundLoading] = useState(false);
 
     const refund = async () => {
@@ -153,19 +153,6 @@ export default function BountyCard({ bounty, onAccept }: Props) {
                         <span className="text-xs font-semibold">0</span>
                     </button>
 
-                    <button
-                        onClick={() => {
-                            navigator.clipboard.writeText(
-                                `${window.location.origin}/bounty/${bounty._id}`
-                            );
-                            alert("Link copied");
-                        }}
-                        className="flex items-center gap-1 hover:text-green-400 transition"
-                    >
-                        <span className="text-[20px]">
-                            <FaShare size={24} />
-                        </span>
-                    </button>
                 </div>
 
                 {/* Right Action */}
@@ -181,11 +168,13 @@ export default function BountyCard({ bounty, onAccept }: Props) {
                 {!isCreator && !isCompleted && !isRefunded && (
                     <button
                         onClick={() => onAccept?.(bounty._id)}
+                        disabled={isAcceptDisabled}
                         className="
     bg-primary hover:bg-primary/80
     text-white text-xs font-bold
     px-4 py-2 rounded-lg
     transition shadow-glow
+    disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary
     "
                     >
                         Accept
