@@ -7,13 +7,41 @@ import Link from "next/link";
 import MediaViewer from "@/components/feed/MediaViewer";
 import { FaBolt, FaEdit } from "react-icons/fa";
 import { MdAssignment, MdOutlineAssignmentTurnedIn } from "react-icons/md";
+import { signAction } from "@/lib/signAction";
 
 export default function ProfilePage() {
-    const { user } = useUser();
+    const { user, setUser } = useUser();
 
     const [createdBounties, setCreatedBounties] = useState<any[]>([]);
     const [participatedCount, setParticipatedCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [editOpen, setEditOpen] = useState(false);
+    const [newUsername, setNewUsername] = useState("");
+    const [usernameError, setUsernameError] = useState("");
+    const [savingUsername, setSavingUsername] = useState(false);
+
+    const updateUsername = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const username = newUsername.trim();
+        if (!user || !username) return;
+
+        try {
+            setSavingUsername(true);
+            setUsernameError("");
+            const auth = await signAction("user/set-username", username);
+            const response = await axios.post("/api/user/set-username", { ...auth, username });
+            setUser(response.data.user);
+            setEditOpen(false);
+            setNewUsername("");
+        } catch (error) {
+            const message = axios.isAxiosError(error) && typeof error.response?.data?.error === "string"
+                ? error.response.data.error
+                : "Could not update username. Please try again.";
+            setUsernameError(message);
+        } finally {
+            setSavingUsername(false);
+        }
+    };
 
     useEffect(() => {
         if (!user) return;
@@ -111,14 +139,54 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
-                {/* Edit Button (UI only for now) */}
-                <button className="bg-primary/20 hover:bg-primary/30 text-primary px-5 py-2 rounded-xl font-semibold transition flex items-center gap-2">
-                    <span className="text-sm">
+                <div className="w-full md:w-auto space-y-3">
+                    <button
+                        onClick={() => {
+                            setNewUsername(user.username);
+                            setUsernameError("");
+                            setEditOpen((value) => !value);
+                        }}
+                        className="bg-primary text-white px-5 py-2 rounded-xl font-semibold flex items-center gap-2"
+                    >
                         <FaEdit size={18} />
-                    </span>
-                    Edit Profile
-                </button>
+                        Edit Profile
+                    </button>
+
+                    {editOpen && (
+                        <form onSubmit={updateUsername} className="w-full md:w-72 rounded-xl border border-primary/20 bg-white dark:bg-cardDark p-4 space-y-3">
+                            <label htmlFor="profile-username" className="block text-sm font-semibold">Username</label>
+                            <input
+                                id="profile-username"
+                                value={newUsername}
+                                onChange={(event) => setNewUsername(event.target.value)}
+                                maxLength={32}
+                                required
+                                className="w-full rounded-lg border border-primary/20 bg-transparent px-3 py-2 outline-none focus:border-primary"
+                            />
+                            {usernameError && <p role="alert" className="text-xs text-red-500">{usernameError}</p>}
+                            <div className="flex gap-2">
+                                <button
+                                    type="submit"
+                                    disabled={savingUsername || !newUsername.trim() || newUsername.trim() === user.username}
+                                    className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                >
+                                    {savingUsername ? "Saving..." : "Save username"}
+                                </button>
+                                <button type="button" onClick={() => setEditOpen(false)} className="rounded-lg border border-primary/20 px-3 py-2 text-sm">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                </div>
             </section>
+
+            {createdBounties.length === 0 && participatedCount === 0 && (
+                <section className="rounded-2xl border border-primary/15 bg-white/60 p-6 text-center dark:bg-cardDark/60">
+                    <h3 className="font-semibold">No profile activity yet</h3>
+                    <p className="mt-2 text-sm text-textMutedDark">Create a bounty or submit proof to start building your Pager activity.</p>
+                </section>
+            )}
 
             {/* Stats */}
             <section className="grid grid-cols-1 md:grid-cols-2 gap-6">

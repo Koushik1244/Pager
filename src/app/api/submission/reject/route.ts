@@ -5,22 +5,35 @@ import { connectDB } from "@/lib/mongodb";
 import Submission from "@/models/Submission";
 import Bounty from "@/models/Bounty";
 import User from "@/models/User";
+import { verifyWalletSignature, WalletSignatureError } from "@/lib/auth";
+import { checkSubmissionActionRules } from "@/lib/bountyRules";
 
 export async function POST(req: NextRequest) {
     try {
         await connectDB();
 
-        const { submissionId, bountyId, walletAddress } = await req.json();
+        const body = await req.json();
+        const { submissionId, bountyId, walletAddress } = body;
 
         if (!submissionId || !bountyId || !walletAddress) {
             return NextResponse.json({ error: "Missing fields" }, { status: 400 });
         }
 
-        const user = await User.findOne({ walletAddress }).select("_id");
-        const bounty = await Bounty.findOne({ _id: bountyId, creator: user?._id, status: "open" });
+        const actingAddress = verifyWalletSignature(body, "submission/reject", submissionId);
 
-        if (!user || !bounty) {
-            return NextResponse.json({ error: "Unauthorized or inactive bounty" }, { status: 403 });
+        const user = await User.findOne({ walletAddress: { $regex: `^${actingAddress}$`, $options: "i" } }).select("_id");
+        if (!user) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        const [bounty, existingSubmission] = await Promise.all([
+            Bounty.findById(bountyId),
+            Submission.findOne({ _id: submissionId, bountyId }),
+        ]);
+        const ruleError = checkSubmissionActionRules(bounty, existingSubmission, user._id);
+
+        if (ruleError) {
+            return NextResponse.json({ error: ruleError.message }, { status: ruleError.status });
         }
 
         const submission = await Submission.findOneAndUpdate({
@@ -37,6 +50,9 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
+        if (error instanceof WalletSignatureError) {
+            return NextResponse.json({ error: error.message }, { status: error.status });
+        }
         console.error(error);
         return NextResponse.json({ error: "Server error" }, { status: 500 });
     }

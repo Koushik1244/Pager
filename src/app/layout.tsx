@@ -2,6 +2,7 @@
 
 import { UserProvider } from "@/context/UserContext";
 import MenuBar from "@/components/MenuBar";
+import { ToastProvider } from "@/components/ui/Toast";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "./globals.css";
 
@@ -30,10 +31,12 @@ export default function RootLayout({
       </head>
 
       <body className="min-h-screen text-textMainLight dark:text-textMainDark font-display transition-colors duration-300">
-        <UserProvider>
-          <MenuBar />
-          {children}
-        </UserProvider>
+        <ToastProvider>
+          <UserProvider>
+            <MenuBar />
+            {children}
+          </UserProvider>
+        </ToastProvider>
       </body>
     </html>
   );

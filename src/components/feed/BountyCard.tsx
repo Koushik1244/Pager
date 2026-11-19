@@ -9,10 +9,13 @@ import { useUser } from "@/context/UserContext";
 import { AiFillLike } from "react-icons/ai";
 import { HiChatBubbleLeft, HiChatBubbleOvalLeft } from "react-icons/hi2";
 import { MdChatBubble } from "react-icons/md";
-import { FaShare } from "react-icons/fa";
 import axios from "axios";
 import { ethers } from "ethers";
 import { ESCROW_ABI, ESCROW_ADDRESS } from "@/lib/contracts";
+import { signAction } from "@/lib/signAction";
+import Link from "next/link";
+import { FaShareAlt } from "react-icons/fa";
+import { useToast } from "@/components/ui/Toast";
 
 type Props = {
     bounty: any;
@@ -21,12 +24,35 @@ type Props = {
 
 export default function BountyCard({ bounty, onAccept }: Props) {
     const { user } = useUser();
+    const showToast = useToast();
 
     const isCreator = user?.username === bounty.username;
     const isCompleted = bounty.status === "completed";
     const isRefunded = bounty.status === "refunded";
     const isExpired = bounty.deadline && new Date(bounty.deadline).getTime() < Date.now();
+    const isAcceptDisabled = Boolean(isExpired) || bounty.status !== "open";
     const [refundLoading, setRefundLoading] = useState(false);
+
+    const shareBounty = async () => {
+        const url = `${window.location.origin}/bounty/${bounty._id}`;
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: `Pager bounty: ${bounty.reward} USDC`,
+                    text: bounty.description,
+                    url,
+                });
+            } else {
+                await navigator.clipboard.writeText(url);
+                showToast("Bounty link copied.", "success");
+            }
+        } catch (error) {
+            if (!(error instanceof DOMException && error.name === "AbortError")) {
+                console.error(error);
+                showToast("Could not share the bounty link.", "error");
+            }
+        }
+    };
 
     const refund = async () => {
         if (!user?.walletAddress || !bounty.onChainId) return;
@@ -35,23 +61,37 @@ export default function BountyCard({ bounty, onAccept }: Props) {
             setRefundLoading(true);
 
             if (!(window as any).ethereum) {
-                alert("MetaMask not found");
+                showToast("No browser wallet was found.", "error");
                 return;
             }
 
-            const provider = new ethers.BrowserProvider((window as any).ethereum);
-            let network = await provider.getNetwork();
-
-            if (network.chainId !== 10143n) {
+            try {
                 await (window as any).ethereum.request({
                     method: "wallet_switchEthereumChain",
-                    params: [{ chainId: "0x279f" }],
+                    params: [{ chainId: "0x279F" }],
                 });
+            } catch (switchError: any) {
+                if (switchError.code === 4902) {
+                    await (window as any).ethereum.request({
+                        method: "wallet_addEthereumChain",
+                        params: [{
+                            chainId: "0x279F",
+                            chainName: "Monad Testnet",
+                            rpcUrls: [process.env.NEXT_PUBLIC_MONAD_RPC],
+                            nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+                            blockExplorerUrls: ["https://explorer.monad.xyz"],
+                        }],
+                    });
+                } else {
+                    throw switchError;
+                }
             }
 
-            network = await provider.getNetwork();
+            const provider = new ethers.BrowserProvider((window as any).ethereum);
+            const network = await provider.getNetwork();
             if (network.chainId !== 10143n) {
-                throw new Error("Please switch to Monad Testnet");
+                showToast("Please switch to Monad Testnet.", "error");
+                return;
             }
 
             const signer = await provider.getSigner();
@@ -59,16 +99,19 @@ export default function BountyCard({ bounty, onAccept }: Props) {
             const tx = await escrow.refundExpired(bounty.onChainId);
             await tx.wait();
 
+            const auth = await signAction("bounty/refund", bounty._id);
+
             await axios.post("/api/bounty/refund", {
                 bountyId: bounty._id,
-                walletAddress: user.walletAddress,
+                ...auth,
+                txHash: tx.hash,
             });
 
-            alert("Bounty refunded successfully!");
+            showToast("Bounty refunded successfully.", "success");
             window.location.reload();
         } catch (error) {
             console.error(error);
-            alert("Refund failed");
+            showToast("Refund failed.", "error");
         } finally {
             setRefundLoading(false);
         }
@@ -153,20 +196,16 @@ export default function BountyCard({ bounty, onAccept }: Props) {
                         <span className="text-xs font-semibold">0</span>
                     </button>
 
-                    <button
-                        onClick={() => {
-                            navigator.clipboard.writeText(
-                                `${window.location.origin}/bounty/${bounty._id}`
-                            );
-                            alert("Link copied");
-                        }}
-                        className="flex items-center gap-1 hover:text-green-400 transition"
-                    >
-                        <span className="text-[20px]">
-                            <FaShare size={24} />
-                        </span>
-                    </button>
                 </div>
+
+                <div className="flex items-center gap-4">
+                    <Link href={`/bounty/${bounty._id}`} className="text-xs font-semibold text-primary hover:underline">
+                        View
+                    </Link>
+                    <button onClick={shareBounty} className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                        <FaShareAlt aria-hidden="true" />
+                        Share
+                    </button>
 
                 {/* Right Action */}
                 {isCreator && isExpired && !isCompleted && !isRefunded && bounty.status === "open" && (
@@ -181,11 +220,13 @@ export default function BountyCard({ bounty, onAccept }: Props) {
                 {!isCreator && !isCompleted && !isRefunded && (
                     <button
                         onClick={() => onAccept?.(bounty._id)}
+                        disabled={isAcceptDisabled}
                         className="
     bg-primary hover:bg-primary/80
     text-white text-xs font-bold
     px-4 py-2 rounded-lg
     transition shadow-glow
+    disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary
     "
                     >
                         Accept
@@ -202,6 +243,7 @@ export default function BountyCard({ bounty, onAccept }: Props) {
                         Refunded
                     </span>
                 )}
+                </div>
             </div>
         </article>
     );

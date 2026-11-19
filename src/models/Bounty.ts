@@ -48,6 +48,9 @@ const BountySchema = new Schema(
             type: Number,
             default: null,
         },
+        refundTxHash: {
+            type: String,
+        },
     },
     { timestamps: true }
 );

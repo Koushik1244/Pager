@@ -2,16 +2,15 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useRouter } from "next/navigation";
-import { IoMdArrowRoundForward, IoMdCloseCircle } from "react-icons/io";
+import { IoMdCloseCircle } from "react-icons/io";
 import { FaSearch } from "react-icons/fa";
 import { ImSearch } from "react-icons/im";
+import Link from "next/link";
 
 export default function SearchPage() {
     const [query, setQuery] = useState("");
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const router = useRouter();
 
     const searchUsers = async (value: string) => {
         if (!value.trim()) {
@@ -103,11 +102,12 @@ export default function SearchPage() {
                         </p>
                     )}
 
-                    {users.map((user) => (
-                        <div
-                            key={user._id}
-                            onClick={() => router.push(`/profile/${user.username}`)}
-                            className="
+                    {users.map((user) => {
+                        const profileIdentifier = user.username?.trim() || user.walletAddress;
+                        return (
+                            <div
+                                key={user._id}
+                                className="
                             flex items-center justify-between
                             p-4
                             rounded-xl
@@ -115,37 +115,34 @@ export default function SearchPage() {
                             bg-white dark:bg-cardDark
                             hover:border-primary/40
                             hover:shadow-lg
-                            cursor-pointer
                             transition-all
                             "
-                        >
-                            <div className="flex items-center gap-4">
-                                {/* Mock Avatar */}
-                                <img
-                                    src={`https://i.pravatar.cc/60?u=${user.username}`}
-                                    className="w-12 h-12 rounded-full border border-primary/20"
-                                />
+                                >
+                                <div className="flex items-center gap-4">
+                                    {/* Mock Avatar */}
+                                    <img
+                                        src={`https://i.pravatar.cc/60?u=${encodeURIComponent(profileIdentifier)}`}
+                                        className="w-12 h-12 rounded-full border border-primary/20"
+                                    />
 
-                                <div>
-                                    <p className="font-semibold text-textMainLight dark:text-textMainDark">
-                                        @{user.username}
-                                    </p>
+                                    <Link href={`/profile/${encodeURIComponent(profileIdentifier)}`} className="hover:text-primary">
+                                        <p className="font-semibold text-textMainLight dark:text-textMainDark">
+                                            {user.username ? `@${user.username}` : profileIdentifier}
+                                        </p>
 
-                                    <p className="text-xs text-textMutedDark font-mono">
-                                        {user.walletAddress.slice(0, 6)}...
-                                        {user.walletAddress.slice(-4)}
-                                    </p>
+                                        <p className="text-xs text-textMutedDark font-mono">
+                                            {user.walletAddress.slice(0, 6)}...
+                                            {user.walletAddress.slice(-4)}
+                                        </p>
+                                    </Link>
+                                </div>
+
+                                <div className="text-primary text-sm font-semibold">
+                                    User
                                 </div>
                             </div>
-
-                            <div className="text-primary flex items-center gap-1 text-sm font-semibold">
-                                View
-                                <span className="text-sm">
-                                    <IoMdArrowRoundForward size={20} />
-                                </span>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </main>
