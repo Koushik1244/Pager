@@ -65,19 +65,33 @@ export default function BountyCard({ bounty, onAccept }: Props) {
                 return;
             }
 
-            const provider = new ethers.BrowserProvider((window as any).ethereum);
-            let network = await provider.getNetwork();
-
-            if (network.chainId !== 10143n) {
+            try {
                 await (window as any).ethereum.request({
                     method: "wallet_switchEthereumChain",
-                    params: [{ chainId: "0x279f" }],
+                    params: [{ chainId: "0x279F" }],
                 });
+            } catch (switchError: any) {
+                if (switchError.code === 4902) {
+                    await (window as any).ethereum.request({
+                        method: "wallet_addEthereumChain",
+                        params: [{
+                            chainId: "0x279F",
+                            chainName: "Monad Testnet",
+                            rpcUrls: [process.env.NEXT_PUBLIC_MONAD_RPC],
+                            nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+                            blockExplorerUrls: ["https://explorer.monad.xyz"],
+                        }],
+                    });
+                } else {
+                    throw switchError;
+                }
             }
 
-            network = await provider.getNetwork();
+            const provider = new ethers.BrowserProvider((window as any).ethereum);
+            const network = await provider.getNetwork();
             if (network.chainId !== 10143n) {
-                throw new Error("Please switch to Monad Testnet");
+                showToast("Please switch to Monad Testnet.", "error");
+                return;
             }
 
             const signer = await provider.getSigner();

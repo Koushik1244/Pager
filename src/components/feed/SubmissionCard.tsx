@@ -35,42 +35,33 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
     const isPending = submission.status === "pending";
 
     const ensureMonadTestnet = async () => {
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
-        const network = await provider.getNetwork();
-
-        if (network.chainId !== 10143n) {
-            try {
+        try {
+            await (window as any).ethereum.request({
+                method: "wallet_switchEthereumChain",
+                params: [{ chainId: "0x279F" }],
+            });
+        } catch (switchError: any) {
+            if (switchError.code === 4902) {
                 await (window as any).ethereum.request({
-                    method: "wallet_switchEthereumChain",
-                    params: [{ chainId: "0x279f" }],
+                    method: "wallet_addEthereumChain",
+                    params: [{
+                        chainId: "0x279F",
+                        chainName: "Monad Testnet",
+                        rpcUrls: [process.env.NEXT_PUBLIC_MONAD_RPC],
+                        nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+                        blockExplorerUrls: ["https://explorer.monad.xyz"],
+                    }],
                 });
-            } catch (switchError: any) {
-                if (switchError.code === 4902) {
-                    await (window as any).ethereum.request({
-                        method: "wallet_addEthereumChain",
-                        params: [
-                            {
-                                chainId: "0x279f",
-                                chainName: "Monad Testnet",
-                                rpcUrls: ["https://testnet-rpc.monad.xyz"],
-                                nativeCurrency: {
-                                    name: "MON",
-                                    symbol: "MON",
-                                    decimals: 18,
-                                },
-                                blockExplorerUrls: ["https://explorer.monad.xyz"],
-                            },
-                        ],
-                    });
-                } else {
-                    throw switchError;
-                }
+            } else {
+                throw switchError;
             }
         }
 
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
         const confirmedNetwork = await provider.getNetwork();
         if (confirmedNetwork.chainId !== 10143n) {
-            throw new Error("Please switch to Monad Testnet");
+            showToast("Please switch to Monad Testnet.", "error");
+            return null;
         }
 
         return provider;
@@ -119,6 +110,7 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
             }
 
             const provider = await ensureMonadTestnet();
+            if (!provider) return;
             const signer = await provider.getSigner();
 
             const escrow = new ethers.Contract(
@@ -161,6 +153,7 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
             }
 
             const provider = await ensureMonadTestnet();
+            if (!provider) return;
             const signer = await provider.getSigner();
 
             const escrow = new ethers.Contract(
