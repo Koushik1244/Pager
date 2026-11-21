@@ -36,21 +36,29 @@ export default function PublicProfilePage() {
             }
             const isWalletAddress = /^0x[0-9a-f]{40}$/i.test(identifier);
             const [userResponse, bountyResponse] = await Promise.all([
-                axios.get(`/api/user/search?q=${encodeURIComponent(identifier)}`),
+                axios.get(`/api/user/search?q=${encodeURIComponent(identifier)}&exact=1`),
                 axios.get("/api/bounty/all"),
             ]);
 
-            const foundUser = (userResponse.data.users ?? []).find(
-                (candidate: ProfileUser) => isWalletAddress
-                    ? candidate.walletAddress.toLowerCase() === identifier.toLowerCase()
-                    : candidate.username?.toLowerCase() === identifier.toLowerCase()
-            ) as ProfileUser | undefined;
+            const returnedUser = userResponse.data.users?.[0] as ProfileUser | undefined;
+
+            if (!returnedUser) {
+                setProfile(null);
+                setCreatedBounties([]);
+                setSubmissions([]);
+                setError("Profile not found");
+                return;
+            }
+
+            const foundUser = isWalletAddress
+                ? returnedUser.walletAddress.toLowerCase() === identifier.toLowerCase() ? returnedUser : undefined
+                : returnedUser.username?.toLowerCase() === identifier.toLowerCase() ? returnedUser : undefined;
 
             if (!foundUser) {
                 setProfile(null);
                 setCreatedBounties([]);
                 setSubmissions([]);
-                setError("Profile not found");
+                setError("Could not load this profile.");
                 return;
             }
 

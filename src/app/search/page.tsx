@@ -125,7 +125,7 @@ export default function SearchPage() {
                                         className="w-12 h-12 rounded-full border border-primary/20"
                                     />
 
-                                    <Link href={`/profile/${encodeURIComponent(profileIdentifier)}`} className="hover:text-primary">
+                                    <Link href={`/profile/${encodeURIComponent(user.walletAddress || user.username)}`} className="hover:text-primary">
                                         <p className="font-semibold text-textMainLight dark:text-textMainDark">
                                             {user.username ? `@${user.username}` : profileIdentifier}
                                         </p>
