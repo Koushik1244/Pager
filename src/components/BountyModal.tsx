@@ -27,6 +27,7 @@ export default function BountyModal({ open, onClose }: Props) {
     const showToast = useToast();
     const [description, setDescription] = useState("");
     const [reward, setReward] = useState("");
+    const [deadlineSeconds, setDeadlineSeconds] = useState(86400);
     const [loading, setLoading] = useState(false);
 
 
@@ -37,6 +38,7 @@ export default function BountyModal({ open, onClose }: Props) {
             document.body.style.overflow = "hidden";
         } else {
             document.body.style.overflow = "auto";
+            setDeadlineSeconds(86400);
             const timer = setTimeout(() => setIsVisible(false), 250);
             return () => clearTimeout(timer);
         }
@@ -107,7 +109,6 @@ export default function BountyModal({ open, onClose }: Props) {
             const signer = await provider.getSigner();
 
             const amountInUnits = ethers.parseUnits(amount.toString(), 6);
-            const deadline = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
 
             // Approve USDC
             const usdc = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
@@ -132,6 +133,7 @@ export default function BountyModal({ open, onClose }: Props) {
                 ],
                 signer
             );
+            const deadline = Math.floor(Date.now() / 1000) + deadlineSeconds;
             const tx = await escrow.createBounty(amountInUnits, deadline);
             const receipt = await tx.wait();
             const bountyCreatedEvent = receipt?.logs
@@ -165,6 +167,7 @@ export default function BountyModal({ open, onClose }: Props) {
             // Reset
             setDescription("");
             setReward("");
+            setDeadlineSeconds(86400);
             setImageUrl("");
             setLat(null);
             setLng(null);
@@ -270,6 +273,33 @@ export default function BountyModal({ open, onClose }: Props) {
               focus:ring-2 focus:ring-primary/40
             "
                     />
+
+                    <div>
+                        <label htmlFor="bounty-deadline" className="mb-2 block text-sm font-medium text-textMainLight dark:text-textMainDark">
+                            Deadline
+                        </label>
+                        <select
+                            id="bounty-deadline"
+                            value={deadlineSeconds}
+                            onChange={(e) => setDeadlineSeconds(Number(e.target.value))}
+                            className="w-full rounded-lg border border-borderLight bg-white p-3 outline-none transition focus:ring-2 focus:ring-primary/40 dark:border-borderDark dark:bg-neutralDark"
+                        >
+                            <option value={3900}>1 hour</option>
+                            <option value={21600}>6 hours</option>
+                            <option value={86400}>24 hours</option>
+                            <option value={259200}>3 days</option>
+                            <option value={603000}>7 days</option>
+                        </select>
+                        <p className="mt-2 text-xs text-primary/70">
+                            Ends {new Date(Date.now() + deadlineSeconds * 1000).toLocaleString(undefined, {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                                hour: "numeric",
+                                minute: "2-digit",
+                            })}
+                        </p>
+                    </div>
 
                     {/* Map Location Picker */}
                     {/* <div className="text-sm text-primary/70 space-y-2"> */}

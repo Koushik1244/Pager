@@ -48,11 +48,13 @@ export default function HunterSubmissionModal({
         const bountyLng = Number(bounty?.location?.lng);
         if (!Number.isFinite(bountyLat) || !Number.isFinite(bountyLng)) {
             setLocationMessage("This bounty does not have a valid location, so camera capture is unavailable.");
+            showToast("This bounty does not have a valid location, so camera capture is unavailable.", "error");
             return false;
         }
 
         if (!navigator.geolocation) {
             setLocationMessage("Location access is required to open the camera for this submission.");
+            showToast("Location access is required to open the camera for this submission.", "error");
             return false;
         }
 
@@ -63,20 +65,21 @@ export default function HunterSubmissionModal({
                     const distance = distanceMeters(coords.latitude, coords.longitude, bountyLat, bountyLng);
                     if (distance > 150) {
                         setLocationMessage("You must be at the location (within 150 meters) to open the camera.");
+                        showToast(`You are ${Math.round(distance)} m away. Move within 150 m of the bounty.`, "error");
                         resolve(false);
                         return;
                     }
 
                     setCaptureLocation({ lat: coords.latitude, lng: coords.longitude });
-                    setLocationMessage("Location confirmed. Tap Open camera again to capture your proof.");
+                    setLocationMessage("Location confirmed.");
                     resolve(true);
                 },
                 (error) => {
-                    setLocationMessage(
-                        error.code === error.PERMISSION_DENIED
-                            ? "Location permission is required. Allow location access and try again."
-                            : "Could not verify your location. Check location services and try again."
-                    );
+                    const message = error.code === error.PERMISSION_DENIED
+                        ? "Location permission is required. Allow location access and try again."
+                        : "Could not verify your location. Check location services and try again.";
+                    setLocationMessage(message);
+                    showToast(message, "error");
                     resolve(false);
                 },
                 { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }

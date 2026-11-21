@@ -23,7 +23,8 @@ export default function ImageUploader({
     const streamRef = useRef<MediaStream | null>(null);
     const activeRef = useRef(active);
     const [cameraOpen, setCameraOpen] = useState(false);
-    const [cameraReady, setCameraReady] = useState(false);
+    const [isStartingCamera, setIsStartingCamera] = useState(false);
+    const [isCheckingLocation, setIsCheckingLocation] = useState(false);
     const [preview, setPreview] = useState<string | null>(null);
     const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
     const [capturedAt, setCapturedAt] = useState<number | null>(null);
@@ -42,7 +43,6 @@ export default function ImageUploader({
     useEffect(() => {
         if (!active) {
             stopCamera();
-            setCameraReady(false);
         }
     }, [active, stopCamera]);
 
@@ -62,26 +62,39 @@ export default function ImageUploader({
 
     const openCamera = async () => {
         setCameraError("");
-        if (!activeRef.current) return;
-
-        if (onBeforeCapture && !cameraReady) {
-            if (await onBeforeCapture()) setCameraReady(true);
-            return;
-        }
-
-        if (!window.isSecureContext) {
-            setCameraError("Camera access requires HTTPS or localhost. Open Pager in a secure browser context.");
-            setCameraReady(false);
-            return;
-        }
-
-        if (!navigator.mediaDevices?.getUserMedia) {
-            setCameraError("Camera access is unavailable in this browser. Use HTTPS or localhost and try a supported browser.");
-            setCameraReady(false);
-            return;
-        }
-
+        setIsStartingCamera(true);
         try {
+            if (!activeRef.current) return;
+
+            if (onBeforeCapture) {
+                setIsCheckingLocation(true);
+                let locationVerified: boolean;
+                try {
+                    locationVerified = await onBeforeCapture();
+                } catch {
+                    setCameraError("Could not verify your location. Please try again.");
+                    return;
+                } finally {
+                    setIsCheckingLocation(false);
+                }
+
+                if (!locationVerified) return;
+            }
+
+            if (!window.isSecureContext) {
+                const message = "Camera access requires HTTPS or localhost. Open Pager in a secure browser context.";
+                setCameraError(message);
+                showToast(message, "error");
+                return;
+            }
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                const message = "Camera access is unavailable in this browser. Use HTTPS or localhost and try a supported browser.";
+                setCameraError(message);
+                showToast(message, "error");
+                return;
+            }
+
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: "environment" },
                 audio: false,
@@ -94,18 +107,25 @@ export default function ImageUploader({
 
             streamRef.current?.getTracks().forEach((track) => track.stop());
             streamRef.current = stream;
-            setCameraReady(false);
             setCameraOpen(true);
         } catch (error) {
             const name = error instanceof DOMException ? error.name : "";
             if (name === "NotAllowedError" || name === "PermissionDeniedError" || name === "SecurityError") {
-                setCameraError("Camera permission was denied. Allow camera access in your browser settings, then try again.");
+                const message = "Camera permission was denied. Allow camera access in your browser settings, then try again.";
+                setCameraError(message);
+                showToast(message, "error");
             } else if (name === "NotFoundError" || name === "DevicesNotFoundError" || name === "OverconstrainedError") {
-                setCameraError("No camera was found on this device.");
+                const message = "No camera was found on this device.";
+                setCameraError(message);
+                showToast(message, "error");
             } else {
-                setCameraError("The camera could not be started. Check that it is available and try again.");
+                const message = "The camera could not be started. Check that it is available and try again.";
+                setCameraError(message);
+                showToast(message, "error");
             }
-            setCameraReady(false);
+        } finally {
+            setIsCheckingLocation(false);
+            setIsStartingCamera(false);
         }
     };
 
@@ -140,7 +160,6 @@ export default function ImageUploader({
             onCaptured?.(timestamp);
             onUpload("");
             setCameraError("");
-            setCameraReady(false);
             stopCamera();
         }, "image/jpeg", 0.92);
     };
@@ -173,7 +192,6 @@ export default function ImageUploader({
         setPreview(null);
         setCapturedBlob(null);
         setCapturedAt(null);
-        setCameraReady(false);
         setCameraError("");
         onUpload("");
         onCaptured?.(null);
@@ -205,7 +223,6 @@ export default function ImageUploader({
                             type="button"
                             onClick={() => {
                                 stopCamera();
-                                setCameraReady(false);
                             }}
                             className="rounded-xl border border-primary/20 px-4 py-3 text-sm"
                         >
@@ -242,10 +259,14 @@ export default function ImageUploader({
                 <button
                     type="button"
                     onClick={preview ? retake : openCamera}
-                    disabled={uploading || !active}
+                    disabled={uploading || isStartingCamera || !active}
                     className="w-full rounded-xl bg-primary py-3 font-semibold text-white shadow-glow disabled:opacity-50"
                 >
-                    {uploading ? "Uploading photo..." : preview ? "Retake" : "Open camera"}
+                    {uploading
+                        ? "Uploading photo..."
+                        : isStartingCamera
+                            ? isCheckingLocation ? "Checking location..." : "Starting camera..."
+                            : preview ? "Retake" : "Open camera"}
                 </button>
             )}
 
