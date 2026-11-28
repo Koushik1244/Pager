@@ -17,6 +17,18 @@ import Link from "next/link";
 import { FaShareAlt } from "react-icons/fa";
 import { useToast } from "@/components/ui/Toast";
 
+const REFUND_ABI = [
+    ...ESCROW_ABI,
+    "function bounties(uint256) view returns (address creator, uint256 amount, bool active, uint256 deadline)",
+];
+
+const BOUNTY_FINISHED_MESSAGE = "This bounty is already finished on-chain. Reload to see its current status.";
+const REFUND_REVERT_MESSAGES = new Map([
+    ["Inactive", BOUNTY_FINISHED_MESSAGE],
+    ["Not creator", "Only the bounty creator can request a refund."],
+    ["Not expired", "This bounty has not expired yet."],
+]);
+
 type Props = {
     bounty: any;
     onAccept?: (bountyId: string) => void;
@@ -97,7 +109,21 @@ export default function BountyCard({ bounty, onAccept }: Props) {
             }
 
             const signer = await provider.getSigner();
-            const escrow = new ethers.Contract(ESCROW_ADDRESS, ESCROW_ABI, signer);
+            const escrow = new ethers.Contract(ESCROW_ADDRESS, REFUND_ABI, signer);
+
+            let isInactive = false;
+            try {
+                const onChainBounty = await escrow.bounties(bounty.onChainId);
+                isInactive = onChainBounty.active === false;
+            } catch {
+                // If the read fails, let the contract validate the refund.
+            }
+
+            if (isInactive) {
+                showToast(BOUNTY_FINISHED_MESSAGE, "error");
+                return;
+            }
+
             const tx = await escrow.refundExpired(bounty.onChainId);
             await tx.wait();
 
@@ -113,7 +139,10 @@ export default function BountyCard({ bounty, onAccept }: Props) {
             window.location.reload();
         } catch (error) {
             console.error(error);
-            showToast("Refund failed.", "error");
+            const message = ethers.isError(error, "CALL_EXCEPTION") && error.reason
+                ? REFUND_REVERT_MESSAGES.get(error.reason)
+                : undefined;
+            showToast(message ?? "Refund failed.", "error");
         } finally {
             setRefundLoading(false);
         }
