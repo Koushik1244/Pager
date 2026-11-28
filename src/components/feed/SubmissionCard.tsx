@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MediaViewer from "./MediaViewer";
 import { useUser } from "@/context/UserContext";
 import axios from "axios";
@@ -20,6 +20,12 @@ type Props = {
     onApproved?: () => void;
 };
 
+const APPROVAL_ABI = [
+    ...ESCROW_ABI,
+    "function bounties(uint256) view returns (address creator, uint256 amount, bool active, uint256 deadline)",
+    "event BountyApproved(uint256 indexed bountyId, address indexed hunter, uint256 amount)",
+];
+
 export default function SubmissionCard({ submission, bounty, onApproved }: Props) {
     const { user } = useUser();
     const showToast = useToast();
@@ -30,6 +36,19 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
     const [syncError, setSyncError] = useState<string | null>(null);
     const [rejectLoading, setRejectLoading] = useState(false);
     const [approvalTxHash, setApprovalTxHash] = useState<string | null>(null);
+    const approvalStorageKey = `pager:approval:${submission._id}`;
+
+    useEffect(() => {
+        try {
+            const savedHash = localStorage.getItem(approvalStorageKey);
+            if (savedHash) {
+                setApprovalTxHash(savedHash);
+                setSyncError("Approval transaction found. Retry the database sync.");
+            }
+        } catch {
+            // Approval can still be recovered from the chain.
+        }
+    }, [approvalStorageKey]);
 
     const isCreator = user?.username === bounty.username;
     const isPending = submission.status === "pending";
@@ -79,6 +98,11 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
                 ...auth,
                 txHash,
             });
+            try {
+                localStorage.removeItem(approvalStorageKey);
+            } catch {
+                // The database sync already succeeded.
+            }
 
             setConfirmOpen(false);
             onApproved?.();
@@ -98,6 +122,70 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
         }
     };
 
+    const recoverApprovalHash = async (escrow: ethers.Contract, provider: ethers.BrowserProvider) => {
+        try {
+            const savedHash = localStorage.getItem(approvalStorageKey);
+            if (savedHash) return savedHash;
+        } catch {
+            // Continue with the event log.
+        }
+
+        if (approvalTxHash) return approvalTxHash;
+
+        try {
+            const latestBlock = await provider.getBlockNumber();
+            const filter = escrow.filters.BountyApproved(bounty.onChainId);
+            for (const range of [90_000, 10_000, 1_000]) {
+                try {
+                    const logs = await escrow.queryFilter(filter, Math.max(0, latestBlock - range));
+                    const latest = logs.sort(
+                        (a, b) => b.blockNumber - a.blockNumber || b.index - a.index
+                    )[0];
+                    return latest?.transactionHash ?? null;
+                } catch {
+                    // Retry with a smaller block range when the RPC rejects the query.
+                }
+            }
+        } catch {
+            // A missing provider response is reported to the user below.
+        }
+        return null;
+    };
+
+    const retryApprovalSync = async () => {
+        try {
+            if (!(window as any).ethereum) {
+                showToast("No browser wallet was found.", "error");
+                return;
+            }
+            const provider = await ensureMonadTestnet();
+            if (!provider) return;
+            const signer = await provider.getSigner();
+            const escrow = new ethers.Contract(ESCROW_ADDRESS, APPROVAL_ABI, signer);
+            const txHash = await recoverApprovalHash(escrow, provider);
+            if (!txHash) {
+                showToast("Payment found on-chain but the approval transaction hash could not be located.", "error");
+                return;
+            }
+            setApprovalTxHash(txHash);
+            await syncApproval(txHash);
+        } catch (error) {
+            console.error(error);
+            showToast("Approval sync failed.", "error");
+        }
+    };
+
+    const syncInactiveApproval = async (escrow: ethers.Contract, provider: ethers.BrowserProvider) => {
+        showToast("Already paid on-chain, syncing", "success");
+        const txHash = await recoverApprovalHash(escrow, provider);
+        if (!txHash) {
+            showToast("Payment found on-chain but the approval transaction hash could not be located.", "error");
+            return;
+        }
+        setApprovalTxHash(txHash);
+        await syncApproval(txHash);
+    };
+
     // 🔐 On-chain approval, followed by a retryable database sync
     const approve = async () => {
         try {
@@ -115,22 +203,47 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
 
             const escrow = new ethers.Contract(
                 ESCROW_ADDRESS,
-                ESCROW_ABI,
+                APPROVAL_ABI,
                 signer
             );
 
+            let onChainBounty: { active: boolean } | null = null;
+            try {
+                onChainBounty = await escrow.bounties(bounty.onChainId);
+            } catch {
+                // Preserve the transaction path if the on-chain read fails.
+            }
+            if (onChainBounty?.active === false) {
+                await syncInactiveApproval(escrow, provider);
+                return;
+            }
+
             // Release funds on-chain first so the transaction can be independently verified.
-            const tx = await escrow.approveBounty(
-                bounty.onChainId,
-                submission.hunterWallet
-            );
+            let tx: ethers.ContractTransactionResponse;
+            try {
+                tx = await escrow.approveBounty(
+                    bounty.onChainId,
+                    submission.hunterWallet
+                );
+            } catch (error) {
+                if (ethers.isError(error, "CALL_EXCEPTION") && error.reason === "Inactive") {
+                    await syncInactiveApproval(escrow, provider);
+                    return;
+                }
+                throw error;
+            }
+            setApprovalTxHash(tx.hash);
+            try {
+                localStorage.setItem(approvalStorageKey, tx.hash);
+            } catch {
+                // The event log can recover the hash after a reload.
+            }
 
             const receipt = await tx.wait();
             if (!receipt || receipt.status !== 1) {
                 throw new Error("Approval transaction was not confirmed successfully");
             }
 
-            setApprovalTxHash(tx.hash);
             await syncApproval(tx.hash);
 
         } catch (err) {
@@ -345,7 +458,7 @@ shadow-md
 
                             {syncError && approvalTxHash ? (
                                 <button
-                                    onClick={() => syncApproval(approvalTxHash)}
+                                    onClick={retryApprovalSync}
                                     disabled={syncLoading}
                                     className="flex-1 py-2 rounded-lg bg-primary text-white shadow-glow disabled:opacity-50"
                                 >
