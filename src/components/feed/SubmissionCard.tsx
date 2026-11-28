@@ -327,8 +327,8 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
         <>
             <div
                 className="
-mt-3 ml-10 left-32 relative
-before:absolute before:left-[-14px] before:top-4
+relative mt-3 w-full min-w-0 max-w-full md:ml-10 md:w-auto
+before:hidden md:before:block before:absolute before:left-[-14px] before:top-4
 before:w-2 before:h-2 before:rounded-full
 before:bg-primary/40
 
@@ -341,14 +341,14 @@ rounded-2xl
 shadow-md
 "           >
                 {/* Header */}
-                <div className="p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center justify-between gap-2 p-3">
+                    <div className="flex min-w-0 items-center gap-2">
                         <img
                             src={`https://i.pravatar.cc/40?u=${submission.username}`}
-                            className="w-8 h-8 rounded-full border border-primary/20"
+                            className="h-8 w-8 shrink-0 rounded-full border border-primary/20"
                         />
 
-                        <div>
+                        <div className="min-w-0 [overflow-wrap:anywhere]">
                             <p className="text-xs font-semibold">
                                 {submission.username}
                             </p>
@@ -375,7 +375,7 @@ shadow-md
                 {/* Description */}
                 {submission.description && (
                     <div className="px-3 pb-2">
-                        <p className="text-xs">{submission.description}</p>
+                        <p className="break-words text-xs">{submission.description}</p>
                     </div>
                 )}
 
@@ -386,7 +386,7 @@ shadow-md
                 )}
 
                 {/* Media */}
-                <div className="px-3 pb-3">
+                <div className="min-w-0 max-w-full px-3 pb-3">
                     <MediaViewer
                         mediaUrl={submission.mediaUrl}
                         lat={bounty.location.lat}
@@ -395,7 +395,7 @@ shadow-md
                 </div>
 
                 {/* Actions */}
-                <div className="px-3 py-2 border-t border-primary/10 flex items-center justify-between">
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-primary/10 px-3 py-2">
                     <div className="flex items-center gap-5 text-textMutedDark">
                         <button className="flex items-center gap-1 hover:text-red-400 active:scale-90 transition">
                             <span className="text-[20px]">
@@ -415,13 +415,13 @@ shadow-md
 
                     {/* Creator Approve */}
                     {isCreator && isPending && bounty.status !== "completed" && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex w-full min-w-0 max-w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
                             <button
                                 onClick={reject}
                                 disabled={rejectLoading}
                                 className="
-                                bg-primary text-white text-[10px]
-                                px-3 py-1 rounded-md
+                                min-h-11 min-w-11 bg-primary text-white text-sm
+                                px-3 py-2 rounded-md
                                 hover:bg-primary/80 transition
                             "
                             >
@@ -431,8 +431,8 @@ shadow-md
                             <button
                                 onClick={() => setConfirmOpen(true)}
                                 className="
-                                bg-primary text-white text-[10px]
-                                px-3 py-1 rounded-md
+                                min-h-11 min-w-11 bg-primary text-white text-sm
+                                px-3 py-2 rounded-md
                                 hover:bg-primary/80 transition
                             "
                             >
