@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import MediaViewer from "./MediaViewer";
 import { useUser } from "@/context/UserContext";
 import axios from "axios";
@@ -25,30 +25,19 @@ const APPROVAL_ABI = [
     "function bounties(uint256) view returns (address creator, uint256 amount, bool active, uint256 deadline)",
     "event BountyApproved(uint256 indexed bountyId, address indexed hunter, uint256 amount)",
 ];
+const approvalInterface = new ethers.Interface(APPROVAL_ABI);
 
 export default function SubmissionCard({ submission, bounty, onApproved }: Props) {
     const { user } = useUser();
     const showToast = useToast();
 
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [approvalLabel, setApprovalLabel] = useState<string | null>(null);
     const [syncLoading, setSyncLoading] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
     const [rejectLoading, setRejectLoading] = useState(false);
     const [approvalTxHash, setApprovalTxHash] = useState<string | null>(null);
     const approvalStorageKey = `pager:approval:${submission._id}`;
-
-    useEffect(() => {
-        try {
-            const savedHash = localStorage.getItem(approvalStorageKey);
-            if (savedHash) {
-                setApprovalTxHash(savedHash);
-                setSyncError("Approval transaction found. Retry the database sync.");
-            }
-        } catch {
-            // Approval can still be recovered from the chain.
-        }
-    }, [approvalStorageKey]);
 
     const isCreator = user?.username === bounty.username;
     const isPending = submission.status === "pending";
@@ -122,26 +111,51 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
         }
     };
 
+    const isMatchingApprovalReceipt = (receipt: ethers.TransactionReceipt | null) => {
+        if (receipt?.status !== 1) return false;
+
+        const topics = approvalInterface.encodeFilterTopics("BountyApproved", [
+            bounty.onChainId,
+            submission.hunterWallet.toLowerCase(),
+        ]);
+        return receipt.logs.some((log) =>
+            log.address.toLowerCase() === ESCROW_ADDRESS.toLowerCase() &&
+            topics.every((topic, index) => topic === log.topics[index]?.toLowerCase())
+        );
+    };
+
     const recoverApprovalHash = async (escrow: ethers.Contract, provider: ethers.BrowserProvider) => {
+        const isValidHash = async (hash: string) => {
+            if (!ethers.isHexString(hash, 32)) return false;
+            try {
+                return isMatchingApprovalReceipt(await provider.getTransactionReceipt(hash));
+            } catch {
+                return false;
+            }
+        };
+
+        let savedHash: string | null = null;
         try {
-            const savedHash = localStorage.getItem(approvalStorageKey);
-            if (savedHash) return savedHash;
+            savedHash = localStorage.getItem(approvalStorageKey);
         } catch {
             // Continue with the event log.
         }
-
-        if (approvalTxHash) return approvalTxHash;
+        if (savedHash && await isValidHash(savedHash)) return savedHash;
+        if (approvalTxHash && approvalTxHash !== savedHash && await isValidHash(approvalTxHash)) {
+            return approvalTxHash;
+        }
 
         try {
             const latestBlock = await provider.getBlockNumber();
-            const filter = escrow.filters.BountyApproved(bounty.onChainId);
+            const filter = escrow.filters.BountyApproved(bounty.onChainId, submission.hunterWallet.toLowerCase());
             for (const range of [90_000, 10_000, 1_000]) {
                 try {
                     const logs = await escrow.queryFilter(filter, Math.max(0, latestBlock - range));
-                    const latest = logs.sort(
-                        (a, b) => b.blockNumber - a.blockNumber || b.index - a.index
-                    )[0];
-                    return latest?.transactionHash ?? null;
+                    const newestFirst = logs.sort((a, b) => b.blockNumber - a.blockNumber || b.index - a.index);
+                    for (const log of newestFirst) {
+                        if (await isValidHash(log.transactionHash)) return log.transactionHash;
+                    }
+                    return null;
                 } catch {
                     // Retry with a smaller block range when the RPC rejects the query.
                 }
@@ -154,6 +168,7 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
 
     const retryApprovalSync = async () => {
         try {
+            setApprovalLabel("Checking approval...");
             if (!(window as any).ethereum) {
                 showToast("No browser wallet was found.", "error");
                 return;
@@ -164,7 +179,7 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
             const escrow = new ethers.Contract(ESCROW_ADDRESS, APPROVAL_ABI, signer);
             const txHash = await recoverApprovalHash(escrow, provider);
             if (!txHash) {
-                showToast("Payment found on-chain but the approval transaction hash could not be located.", "error");
+                showToast("Could not verify an on-chain approval for this hunter. Try again.", "error");
                 return;
             }
             setApprovalTxHash(txHash);
@@ -172,24 +187,31 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
         } catch (error) {
             console.error(error);
             showToast("Approval sync failed.", "error");
+        } finally {
+            setApprovalLabel(null);
         }
     };
 
     const syncInactiveApproval = async (escrow: ethers.Contract, provider: ethers.BrowserProvider) => {
-        showToast("Already paid on-chain, syncing", "success");
+        setApprovalLabel("Checking approval...");
         const txHash = await recoverApprovalHash(escrow, provider);
         if (!txHash) {
-            showToast("Payment found on-chain but the approval transaction hash could not be located.", "error");
+            showToast(
+                "This bounty is already finished on-chain, but no approval for this hunter was found. It may have been refunded or paid to someone else. Reload to see its current status.",
+                "error"
+            );
             return;
         }
+        showToast("Already paid on-chain, syncing", "success");
         setApprovalTxHash(txHash);
         await syncApproval(txHash);
     };
 
     // 🔐 On-chain approval, followed by a retryable database sync
     const approve = async () => {
+        let sentHash: string | null = null;
         try {
-            setLoading(true);
+            setApprovalLabel("Checking bounty...");
             setSyncError(null);
 
             if (!(window as any).ethereum) {
@@ -221,6 +243,7 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
             // Release funds on-chain first so the transaction can be independently verified.
             let tx: ethers.ContractTransactionResponse;
             try {
+                setApprovalLabel("Confirm in wallet...");
                 tx = await escrow.approveBounty(
                     bounty.onChainId,
                     submission.hunterWallet
@@ -232,27 +255,29 @@ export default function SubmissionCard({ submission, bounty, onApproved }: Props
                 }
                 throw error;
             }
-            setApprovalTxHash(tx.hash);
+            sentHash = tx.hash;
+            setApprovalTxHash(sentHash);
+            setApprovalLabel("Waiting for confirmation...");
             try {
-                localStorage.setItem(approvalStorageKey, tx.hash);
+                localStorage.setItem(approvalStorageKey, sentHash);
             } catch {
                 // The event log can recover the hash after a reload.
             }
 
             const receipt = await tx.wait();
-            if (!receipt || receipt.status !== 1) {
-                throw new Error("Approval transaction was not confirmed successfully");
+            if (!isMatchingApprovalReceipt(receipt)) {
+                throw new Error("Approval receipt did not confirm payment for this bounty and hunter");
             }
 
-            await syncApproval(tx.hash);
+            await syncApproval(sentHash);
 
         } catch (err) {
             console.error(err);
-            showToast(approvalTxHash
-                ? `Approval failed after transaction ${approvalTxHash}`
+            showToast(sentHash
+                ? `Approval failed after transaction ${sentHash}`
                 : "Approval failed", "error");
         } finally {
-            setLoading(false);
+            setApprovalLabel(null);
         }
     };
 
@@ -459,18 +484,18 @@ shadow-md
                             {syncError && approvalTxHash ? (
                                 <button
                                     onClick={retryApprovalSync}
-                                    disabled={syncLoading}
+                                    disabled={approvalLabel !== null || syncLoading}
                                     className="flex-1 py-2 rounded-lg bg-primary text-white shadow-glow disabled:opacity-50"
                                 >
-                                    {syncLoading ? "Syncing..." : "Retry sync"}
+                                    {syncLoading ? "Syncing..." : approvalLabel ?? "Retry sync"}
                                 </button>
                             ) : (
                                 <button
                                     onClick={approve}
-                                    disabled={loading || syncLoading}
+                                    disabled={approvalLabel !== null || syncLoading}
                                     className="flex-1 py-2 rounded-lg bg-primary text-white shadow-glow disabled:opacity-50"
                                 >
-                                    {loading ? "Processing..." : "Confirm"}
+                                    {syncLoading ? "Syncing..." : approvalLabel ?? "Confirm"}
                                 </button>
                             )}
                         </div>
