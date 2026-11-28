@@ -26,10 +26,12 @@ export default function BountyCard({ bounty, onAccept }: Props) {
     const { user } = useUser();
     const showToast = useToast();
 
-    const isCreator = user?.username === bounty.username;
+    const isCreator = Boolean(user?.walletAddress && user._id === bounty.creator);
     const isCompleted = bounty.status === "completed";
     const isRefunded = bounty.status === "refunded";
+    const hasExpiredStatus = bounty.status === "expired";
     const isExpired = bounty.deadline && new Date(bounty.deadline).getTime() < Date.now();
+    const canRefund = isCreator && isExpired && (bounty.status === "open" || hasExpiredStatus);
     const isAcceptDisabled = Boolean(isExpired) || bounty.status !== "open";
     const [refundLoading, setRefundLoading] = useState(false);
 
@@ -144,6 +146,11 @@ export default function BountyCard({ bounty, onAccept }: Props) {
                                 {bounty.username}
                             </p>
 
+                            {hasExpiredStatus && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 font-semibold">
+                                    Expired
+                                </span>
+                            )}
                             {(isCompleted || isRefunded) && (
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-500 font-semibold">
                                     {isRefunded ? "Refunded" : "Completed"}
@@ -208,7 +215,7 @@ export default function BountyCard({ bounty, onAccept }: Props) {
                     </button>
 
                 {/* Right Action */}
-                {isCreator && isExpired && !isCompleted && !isRefunded && bounty.status === "open" && (
+                {canRefund && (
                     <button
                         onClick={refund}
                         disabled={refundLoading}
