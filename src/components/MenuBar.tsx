@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { LayoutDashboard, Map, Search, UserRound } from "lucide-react";
 import ConnectWallet from "@/components/ConnectWallet";
 
 const navItems = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/search", label: "Search" },
-    { href: "/map", label: "Map" },
-    { href: "/profile", label: "Profile" },
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/search", label: "Search", icon: Search },
+    { href: "/map", label: "Map", icon: Map },
+    { href: "/profile", label: "Profile", icon: UserRound },
 ];
 
 export default function MenuBar() {
@@ -80,12 +81,14 @@ export default function MenuBar() {
 
     if (!mounted) return null;
 
-    return (
+    const header = (
         <header
             className={`
         sticky top-0 z-[1000]  // ✅ CHANGED: sticky NOT fixed
         transition-transform duration-300 ease-out
         ${visible ? "translate-y-0" : "-translate-y-full"}
+        ${isMapPage ? "max-md:translate-y-0" : ""}
+        max-md:pt-[calc(0.75rem+env(safe-area-inset-top))]
         bg-white/90 dark:bg-[#1a1530]/95
         backdrop-blur-md
         border-b border-borderLight/50 dark:border-borderDark/50
@@ -150,5 +153,36 @@ export default function MenuBar() {
                 </div>
             </div>
         </header>
+    );
+
+    return (
+        <>
+            {header}
+            <nav
+                aria-label="Mobile navigation"
+                className="fixed inset-x-0 bottom-0 z-40 h-[var(--mobile-tab-bar-height)] border-t border-borderLight/50 bg-white dark:border-borderDark/50 dark:bg-[#1a1530] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:hidden"
+            >
+                <div className="mx-auto grid h-full max-w-lg grid-cols-4 gap-1 px-2 py-1">
+                    {navItems.map(({ href, label, icon: Icon }) => {
+                        const isActive = pathname.startsWith(href);
+
+                        return (
+                            <Link
+                                key={href}
+                                href={href}
+                                aria-current={isActive ? "page" : undefined}
+                                className={`flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${isActive
+                                    ? "bg-primary/15 font-semibold text-textMainLight dark:text-textMainDark"
+                                    : "font-medium text-gray-600 hover:bg-primary/10 dark:text-gray-300"
+                                }`}
+                            >
+                                <Icon aria-hidden="true" className="size-5" />
+                                <span>{label}</span>
+                            </Link>
+                        );
+                    })}
+                </div>
+            </nav>
+        </>
     );
 }
